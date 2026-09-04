@@ -98,7 +98,11 @@ export class GatewayStreamingTTS implements TTSProvider {
     }
   }
 
-  private schedule(ctx: AudioContext, pending: Uint8Array, incoming: Uint8Array): Uint8Array {
+  private schedule(
+    ctx: AudioContext,
+    pending: Uint8Array,
+    incoming: Uint8Array,
+  ): Uint8Array<ArrayBuffer> {
     const bytes = new Uint8Array(pending.length + incoming.length);
     bytes.set(pending);
     bytes.set(incoming, pending.length);
