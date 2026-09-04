@@ -166,7 +166,11 @@ export async function retrieve(
   let evidence = await repository.search(query, filter, 4);
   // Course context known but nothing found inside it: widen only to the course.
   if (evidence.length === 0 && filter.chapter) {
-    evidence = await repository.search(query, { course_id: filter.course_id }, 4);
+    evidence = await repository.search(
+      query,
+      filter.course_id ? { course_id: filter.course_id } : {},
+      4,
+    );
   }
   const topRelevance = evidence[0]?.relevance ?? 0;
   return {
