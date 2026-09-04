@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { chatJson, GatewayError, transcribeAudio } from "@/lib/ai-gateway.server";
 import { retrieve, GROUNDING_THRESHOLD } from "@/lib/rag/retriever.server";
-import type { TutorAnswer } from "@/lib/types";
+import type { PracticeQuestion, TeachingMode, TutorAnswer } from "@/lib/types";
 
 const AskInput = z.object({
   question: z.string().min(2).max(1000),
@@ -19,6 +19,23 @@ const AskInput = z.object({
       "step_by_step",
     ])
     .default("default"),
+  mode: z
+    .enum([
+      "explain",
+      "deep_dive",
+      "quick_revision",
+      "exam_mode",
+      "practice",
+      "socratic",
+      "beginner",
+      "teacher",
+    ])
+    .default("explain"),
+  language: z.enum(["english", "hindi", "hinglish", "adaptive"]).default("adaptive"),
+  student_name: z.string().max(60).default("Student"),
+  class_level: z.string().max(32).default(""),
+  goal: z.string().max(32).default(""),
+  subjects: z.array(z.string().max(40)).max(6).default([]),
   course_id: z.string().max(64).optional(),
   chapter: z.string().max(64).optional(),
   weak_concepts: z.array(z.string().max(64)).max(10).default([]),
@@ -36,6 +53,24 @@ const STRATEGY_INSTRUCTION: Record<string, string> = {
   step_by_step: "Answer as numbered steps, one idea per step.",
 };
 
+const MODE_INSTRUCTION: Record<TeachingMode, string> = {
+  explain: "Explain the concept clearly at the student's level.",
+  deep_dive: "Go deep: derivation, edge cases, and why the concept exists at all.",
+  quick_revision: "Rapid revision: only the key points, formulas and one-line recalls.",
+  exam_mode: "Exam focus: marking-scheme wording, common traps, time-saving shortcuts.",
+  practice: "Keep the explanation short and put most of the effort into strong practice items.",
+  socratic: "Lead with guiding questions that make the student reach the answer themselves.",
+  beginner: "Assume zero background; define every term in plain words before using it.",
+  teacher: "Explain the way a teacher would present it to a full class, with board structure.",
+};
+
+const LANGUAGE_INSTRUCTION: Record<string, string> = {
+  english: "Reply strictly in English.",
+  hindi: "Reply in Hindi (Devanagari script).",
+  hinglish: "Reply in natural Hinglish (Roman script, Hindi + English mixed).",
+  adaptive: "Mirror the exact language mix the student used in their question.",
+};
+
 interface ModelOutput {
   intent: string;
   subject: string;
@@ -50,6 +85,7 @@ interface ModelOutput {
   formula: string | null;
   check_question: string;
   prerequisite: string | null;
+  suggested_next?: string[];
   misconception: {
     concept: string;
     likely_misconception: string;
@@ -68,79 +104,65 @@ interface ModelOutput {
   escalation_required: boolean;
 }
 
+const JSON_SHAPE = `{"intent":string,"subject":string,"chapter":string,"concepts":string[],"language":"hinglish"|"hindi"|"english","intent_confidence":number(0-1),"learner_level":string,"difficulty":"easy"|"medium"|"hard","short_answer":string(max 2 sentences),"sections":[{"label":string,"body":string}],"formula":string|null,"check_question":string,"prerequisite":string|null,"suggested_next":string[],"misconception":{"concept":string,"likely_misconception":string,"confidence":number(0-1),"prerequisite":string,"recommended_intervention":string}|null,"practice":[{"level":"easy"|"similar"|"transfer","question":string,"options":string[],"answer_index":number,"explanation":string}],"confidence":number(0-1),"escalation_required":boolean}
+sections must contain 2-4 entries with labels chosen from: Intuition, Relationship, Worked Example, Step-by-Step, Exam Tip. Provide exactly 3 practice items (easy, similar, transfer), each with 3-4 options. suggested_next: 3 short follow-up topics. Never expose internal reasoning steps.`;
+
 export const askTutor = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => AskInput.parse(input))
   .handler(async ({ data }): Promise<TutorAnswer> => {
     const started = Date.now();
+    const intentStart = Date.now();
     const retrieval = await retrieve(data.question, {
       ...(data.course_id ? { course_id: data.course_id } : {}),
       ...(data.chapter ? { chapter: data.chapter } : {}),
+      ...(data.subjects.length ? { subjects: data.subjects } : {}),
+      ...(data.class_level ? { class_level: data.class_level } : {}),
     });
+    const intentMs = Date.now() - intentStart - retrieval.latencyMs;
 
-    // Grounding policy: never answer curriculum questions without evidence.
-    if (!retrieval.grounded) {
-      return {
-        grounded: false,
-        intent: "unresolved",
-        subject: "",
-        chapter: data.chapter ?? "",
-        concepts: [],
-        language: "hinglish",
-        intent_confidence: 0,
-        learner_level: "unknown",
-        difficulty: "medium",
-        answer_strategy: data.strategy,
-        short_answer:
-          "I couldn't find enough trusted material in your course to answer this accurately.",
-        sections: [],
-        formula: null,
-        check_question: "",
-        misconception: null,
-        prerequisite: null,
-        practice: [],
-        evidence: retrieval.evidence,
-        confidence: retrieval.topRelevance,
-        escalation_required: true,
-        fallback_reason: `Top evidence relevance ${retrieval.topRelevance.toFixed(
-          2,
-        )} is below the grounding threshold ${GROUNDING_THRESHOLD}.`,
-        latency: {
-          retrieval_ms: retrieval.latencyMs,
-          llm_ms: 0,
-          total_ms: Date.now() - started,
-        },
-      };
-    }
-
+    const grounded = retrieval.grounded;
     const evidenceBlock = retrieval.evidence
       .map(
         (e, i) =>
-          `[E${i + 1}] ${e.chunk.subject} · ${e.chunk.chapter} · Lecture ${e.chunk.lecture_number} (${e.chunk.timestamp_start}-${e.chunk.timestamp_end}) relevance ${e.relevance}\n${e.chunk.text}\nconcepts: ${e.chunk.concepts.join(", ")}\nprerequisites: ${e.chunk.prerequisites.join(", ")}`,
+          `[E${i + 1}] (${e.level}) ${e.chunk.subject} · ${e.chunk.chapter} · Lecture ${e.chunk.lecture_number} (${e.chunk.timestamp_start}-${e.chunk.timestamp_end}) relevance ${e.relevance}\n${e.chunk.text}\nconcepts: ${e.chunk.concepts.join(", ")}\nprerequisites: ${e.chunk.prerequisites.join(", ")}`,
       )
       .join("\n\n");
+
+    const learnerBlock = `Student: ${data.student_name} · ${data.class_level || "level unknown"} · goal: ${data.goal || "general learning"} · subjects: ${data.subjects.join(", ") || "any"}
+Known weak concepts: ${data.weak_concepts.join(", ") || "none recorded"}`;
+
+    const systemPrompt = grounded
+      ? `You are Aura, an AI tutor for Indian students. Answer using the supplied APPROVED COURSE EVIDENCE as the primary source; do not invent formulas the evidence contradicts.
+${STRATEGY_INSTRUCTION[data.strategy]}
+${MODE_INSTRUCTION[data.mode]}
+${LANGUAGE_INSTRUCTION[data.language]}
+Infer the likely misconception behind the question, not just the topic. Be honest in the misconception confidence.
+Return ONLY JSON with this exact shape:
+${JSON_SHAPE}`
+      : `You are Aura, an AI tutor for Indian students. The student's own course material does NOT cover this question, so answer from reliable general educational knowledge instead — never refuse, never stall. Be accurate and say plainly in the first section that this is general knowledge, outside their uploaded course.
+${STRATEGY_INSTRUCTION[data.strategy]}
+${MODE_INSTRUCTION[data.mode]}
+${LANGUAGE_INSTRUCTION[data.language]}
+Return ONLY JSON with this exact shape:
+${JSON_SHAPE}`;
+
+    const userPrompt = grounded
+      ? `Student doubt (verbatim): "${data.question}"
+${learnerBlock}
+
+APPROVED COURSE EVIDENCE:
+${evidenceBlock}`
+      : `Student doubt (verbatim): "${data.question}"
+${learnerBlock}
+
+No approved course evidence cleared the grounding threshold (top relevance ${retrieval.topRelevance.toFixed(2)} < ${GROUNDING_THRESHOLD}). Answer from general educational knowledge.`;
 
     const llmStart = Date.now();
     let model: ModelOutput;
     try {
       model = await chatJson<ModelOutput>([
-        {
-          role: "system",
-          content: `You are Aura, an AI tutor for Indian students (PhysicsWallah-style batches). You answer ONLY from the supplied approved course evidence. Never invent facts or formulas that are not supported by the evidence. Students speak Hinglish; mirror their language naturally.
-${STRATEGY_INSTRUCTION[data.strategy]}
-Infer the likely misconception behind the question — not just the topic. Be honest about uncertainty in the misconception confidence.
-Return ONLY JSON with this exact shape:
-{"intent":string,"subject":string,"chapter":string,"concepts":string[],"language":"hinglish"|"hindi"|"english","intent_confidence":number(0-1),"learner_level":string,"difficulty":"easy"|"medium"|"hard","short_answer":string(max 2 sentences),"sections":[{"label":string,"body":string}],"formula":string|null,"check_question":string,"prerequisite":string|null,"misconception":{"concept":string,"likely_misconception":string,"confidence":number(0-1),"prerequisite":string,"recommended_intervention":string}|null,"practice":[{"level":"easy"|"similar"|"transfer","question":string,"options":string[],"answer_index":number,"explanation":string}],"confidence":number(0-1),"escalation_required":boolean}
-sections must contain 2-4 entries with labels chosen from: Intuition, Relationship, Worked Example, Step-by-Step, Exam Tip. Provide exactly 3 practice items (easy, similar, transfer), each with 3-4 options. Never expose your internal reasoning steps.`,
-        },
-        {
-          role: "user",
-          content: `Student doubt (verbatim): "${data.question}"
-Known weak concepts for this learner: ${data.weak_concepts.join(", ") || "none recorded"}
-Course context: ${data.course_id ?? "unknown"} / ${data.chapter ?? "unknown chapter"}
-
-APPROVED COURSE EVIDENCE:
-${evidenceBlock}`,
-        },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
       ]);
     } catch (error) {
       if (error instanceof GatewayError) throw error;
@@ -148,22 +170,36 @@ ${evidenceBlock}`,
     }
     const llmMs = Date.now() - llmStart;
 
+    const top = retrieval.evidence[0];
+    const practice: PracticeQuestion[] = (model.practice ?? []).slice(0, 3).map((p, i) => ({
+      id: `q-${Date.now().toString(36)}-${i}`,
+      level: p.level ?? "similar",
+      question: p.question,
+      options: p.options ?? [],
+      answer_index: p.answer_index ?? 0,
+      explanation: p.explanation ?? "",
+    }));
+
     return {
-      grounded: true,
+      grounded,
+      source: grounded ? "course" : "general",
       intent: model.intent ?? "conceptual doubt",
-      subject: model.subject || retrieval.evidence[0]!.chunk.subject,
-      chapter: model.chapter || retrieval.evidence[0]!.chunk.chapter,
+      subject: model.subject || top?.chunk.subject || data.subjects[0] || "General",
+      chapter: model.chapter || top?.chunk.chapter || "",
       concepts: model.concepts ?? [],
       language: model.language ?? "hinglish",
       intent_confidence: clamp(model.intent_confidence),
-      learner_level: model.learner_level ?? "class 11",
+      learner_level: model.learner_level || data.class_level || "unknown",
       difficulty: model.difficulty ?? "medium",
       answer_strategy: data.strategy,
+      mode: data.mode,
       short_answer: model.short_answer ?? "",
       sections: (model.sections ?? []).slice(0, 4),
       formula: model.formula ?? null,
       check_question: model.check_question ?? "",
       prerequisite: model.prerequisite ?? null,
+      prerequisite_gaps: retrieval.prerequisiteGaps,
+      suggested_next: (model.suggested_next ?? []).slice(0, 3),
       misconception: model.misconception
         ? {
             misconception_id: `mc-${Date.now().toString(36)}`,
@@ -174,20 +210,17 @@ ${evidenceBlock}`,
             recommended_intervention: model.misconception.recommended_intervention,
           }
         : null,
-      practice: (model.practice ?? []).slice(0, 3).map((p, i) => ({
-        id: `q-${Date.now().toString(36)}-${i}`,
-        level: p.level,
-        question: p.question,
-        options: p.options ?? [],
-        answer_index: p.answer_index ?? 0,
-        explanation: p.explanation ?? "",
-      })),
-      evidence: retrieval.evidence,
+      practice,
+      evidence: grounded ? retrieval.evidence : [],
       confidence: clamp(model.confidence ?? retrieval.topRelevance),
       escalation_required: Boolean(model.escalation_required),
-      fallback_reason: null,
+      fallback_reason: grounded
+        ? null
+        : `Not found in your course index (top relevance ${retrieval.topRelevance.toFixed(2)} < ${GROUNDING_THRESHOLD}) — answered from general knowledge.`,
       latency: {
+        intent_ms: Math.max(0, intentMs),
         retrieval_ms: retrieval.latencyMs,
+        rerank_ms: retrieval.rerankMs,
         llm_ms: llmMs,
         total_ms: Date.now() - started,
       },
