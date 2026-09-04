@@ -15,13 +15,49 @@ interface Props {
   onStrategy: (strategy: TeachingStrategy) => void;
   onFollowUp: (text: string) => void;
   onQuizMe: () => void;
+  onEscalate: () => void;
 }
 
-export function AnswerPanel({ answer, busy, onStrategy, onFollowUp, onQuizMe }: Props) {
+export function AnswerPanel({
+  answer,
+  busy,
+  onStrategy,
+  onFollowUp,
+  onQuizMe,
+  onEscalate,
+}: Props) {
   const top = answer.evidence[0];
 
   return (
     <div className="mt-6 space-y-3">
+      {!answer.grounded && (
+        <section className="rise-in rounded-2xl border border-rose/25 bg-rose/8 p-4">
+          <p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-rose">
+            General knowledge · outside your course
+          </p>
+          <p className="text-[12px] leading-relaxed text-muted">
+            {answer.fallback_reason ??
+              "This topic isn't in your uploaded course material, so it was answered from general knowledge."}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onFollowUp(`${answer.short_answer ? "Explain again more simply: " : ""}${answer.chapter || answer.subject}`)}
+              className="rounded-lg border border-cream/15 bg-canvas/40 px-3 py-1.5 text-[11px] font-medium text-cream disabled:opacity-50"
+            >
+              Ask differently
+            </button>
+            <button
+              type="button"
+              onClick={onEscalate}
+              className="rounded-lg bg-amber px-3 py-1.5 text-[11px] font-semibold text-canvas"
+            >
+              Send to teacher
+            </button>
+          </div>
+        </section>
+      )}
       <section className="rise-in rounded-2xl border border-cream/10 bg-canvas/40 p-4">
         <p className="mb-1.5 font-mono text-[9px] uppercase tracking-widest text-amber">
           Short Answer
@@ -69,14 +105,19 @@ export function AnswerPanel({ answer, busy, onStrategy, onFollowUp, onQuizMe }: 
             <span className="font-mono text-[10px] text-amber">
               Relevance {Math.round(top.relevance * 100)}%
             </span>
-            <a
-              href={`/lectures/${top.chunk.lecture_id}?t=${top.chunk.timestamp_start}`}
-              onClick={(e) => e.preventDefault()}
-              className="rounded-lg bg-amber px-3 py-1.5 text-[11px] font-semibold text-canvas transition-opacity hover:opacity-90"
-              title="Lecture player opens at this timestamp"
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                onFollowUp(
+                  `Explain what ${top.chunk.teacher} covers in Lecture ${top.chunk.lecture_number} at ${top.chunk.timestamp_start} about ${top.chunk.topic}.`,
+                )
+              }
+              className="rounded-lg bg-amber px-3 py-1.5 text-[11px] font-semibold text-canvas transition-opacity hover:opacity-90 disabled:opacity-50"
+              title="Replay this lecture moment as an explanation"
             >
-              Jump to {top.chunk.timestamp_start}
-            </a>
+              Replay {top.chunk.timestamp_start}
+            </button>
           </div>
         </section>
       )}
@@ -111,6 +152,27 @@ export function AnswerPanel({ answer, busy, onStrategy, onFollowUp, onQuizMe }: 
           </p>
           <p className="text-[14px] leading-relaxed text-cream">{answer.check_question}</p>
         </section>
+      )}
+
+      {answer.suggested_next.length > 0 && (
+        <div className="mt-5">
+          <p className="mb-2.5 font-mono text-[9px] uppercase tracking-widest text-muted">
+            What next
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {answer.suggested_next.map((topic) => (
+              <button
+                key={topic}
+                type="button"
+                disabled={busy}
+                onClick={() => onFollowUp(`Teach me ${topic}`)}
+                className="rounded-full border border-cream/15 bg-canvas/40 px-3 py-1.5 text-[11px] text-cream transition-colors hover:border-amber/50 hover:text-amber disabled:opacity-50"
+              >
+                {topic}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       <section className="mt-5 rounded-2xl border border-cream/10 bg-canvas/40 p-4">
