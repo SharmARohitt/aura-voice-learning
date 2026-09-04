@@ -58,13 +58,11 @@ export function useVoiceSession() {
   }, []);
 
   const logEvent = useCallback((event: Omit<LearningEvent, "id" | "created_at">) => {
-    eventSeq += 1;
-    setEvents((prev) =>
-      [
-        { ...event, id: `ev-${eventSeq}`, created_at: new Date().toISOString() },
-        ...prev,
-      ].slice(0, 20),
-    );
+    setEvents((prev) => {
+      eventSeq += 1;
+      const id = `ev-${eventSeq}-${Math.random().toString(36).slice(2, 8)}`;
+      return [{ ...event, id, created_at: new Date().toISOString() }, ...prev].slice(0, 20);
+    });
   }, []);
 
   const runPipeline = useCallback(
