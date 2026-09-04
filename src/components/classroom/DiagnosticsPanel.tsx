@@ -30,11 +30,22 @@ export function DiagnosticsPanel({ answer, events, activeStage }: Props) {
         ))}
       </div>
 
-      <dl className="mt-4 grid grid-cols-3 gap-2">
+      <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat label="Retrieval" value={answer ? `${answer.latency.retrieval_ms}ms` : "—"} />
+        <Stat label="Rerank" value={answer ? `${answer.latency.rerank_ms}ms` : "—"} />
         <Stat label="Reasoning" value={answer ? `${answer.latency.llm_ms}ms` : "—"} />
         <Stat label="End to end" value={answer ? `${answer.latency.total_ms}ms` : "—"} />
       </dl>
+
+      {answer && (
+        <p className="mt-3 rounded-lg border border-cream/10 bg-canvas/40 px-2.5 py-1.5 font-mono text-[10px] text-muted">
+          Source:{" "}
+          <span className={answer.grounded ? "text-mint" : "text-rose"}>
+            {answer.grounded ? "course index" : "general knowledge"}
+          </span>{" "}
+          · mode {answer.mode}
+        </p>
+      )}
 
       {answer && answer.evidence.length > 0 && (
         <div className="mt-4">
