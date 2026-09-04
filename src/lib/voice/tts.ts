@@ -103,7 +103,7 @@ export class GatewayStreamingTTS implements TTSProvider {
     bytes.set(pending);
     bytes.set(incoming, pending.length);
     const usable = bytes.length - (bytes.length % 2);
-    const leftover = bytes.slice(usable);
+    const leftover = new Uint8Array(bytes.subarray(usable));
     if (usable === 0) return leftover;
 
     const samples = new Int16Array(bytes.buffer, 0, usable / 2);
