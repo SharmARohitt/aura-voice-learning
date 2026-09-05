@@ -139,7 +139,7 @@ function PracticePage() {
           <PracticePanel
             questions={questions}
             concept={concept}
-            onAttempt={(_q, correct) =>
+            onAttempt={(correct) =>
               setScore((s) => ({ correct: s.correct + (correct ? 1 : 0), total: s.total + 1 }))
             }
           />
