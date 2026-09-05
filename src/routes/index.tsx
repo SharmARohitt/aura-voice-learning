@@ -20,9 +20,10 @@ const DESCRIPTION =
   "Ask your doubt out loud in Hinglish. Voice Bingo finds the exact lecture moment, explains it your way, spots your misconception and gives you practice.";
 
 export const Route = createFileRoute("/")({
-  validateSearch: (search: Record<string, unknown>): { ask?: string } => ({
-    ask: typeof search.ask === "string" && search.ask.trim() ? search.ask : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { ask?: string | undefined } => {
+    const raw = search["ask"];
+    return typeof raw === "string" && raw.trim() ? { ask: raw } : {};
+  },
   head: () => ({
     meta: [
       { title: TITLE },
