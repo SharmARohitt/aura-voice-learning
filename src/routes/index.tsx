@@ -20,6 +20,10 @@ const DESCRIPTION =
   "Ask your doubt out loud in Hinglish. Voice Bingo finds the exact lecture moment, explains it your way, spots your misconception and gives you practice.";
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search: Record<string, unknown>): { ask?: string | undefined } => {
+    const raw = search["ask"];
+    return typeof raw === "string" && raw.trim() ? { ask: raw } : {};
+  },
   head: () => ({
     meta: [
       { title: TITLE },
@@ -97,6 +101,7 @@ function Classroom({
 }) {
   const session = useVoiceSession(context);
   const { answer, state } = session;
+  const { ask } = Route.useSearch();
   const busy = ["UNDERSTANDING", "RETRIEVING", "REASONING"].includes(state);
   const learner = useMemo(() => profileFor(context), [context]);
   const topics = useMemo(
@@ -105,6 +110,13 @@ function Classroom({
   );
   const practiceRef = useRef<HTMLDivElement>(null);
   const started = Boolean(answer) || busy || session.question.length > 0;
+
+  const askedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!ask || askedRef.current === ask) return;
+    askedRef.current = ask;
+    session.askTyped(ask);
+  }, [ask, session]);
 
   const runAction = (action: HubAction, topic?: string) => {
     const subject = context.subjects[0] ?? "your syllabus";

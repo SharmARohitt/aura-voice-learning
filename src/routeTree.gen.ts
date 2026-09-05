@@ -10,11 +10,35 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ConfusionGraphRouteImport } from './routes/confusion-graph'
+import { Route as LearningRouteImport } from './routes/learning'
+import { Route as PracticeRouteImport } from './routes/practice'
+import { Route as TeacherRouteImport } from './routes/teacher'
 import { Route as ApiTtsRouteImport } from './routes/api/tts'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfusionGraphRoute = ConfusionGraphRouteImport.update({
+  id: '/confusion-graph',
+  path: '/confusion-graph',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LearningRoute = LearningRouteImport.update({
+  id: '/learning',
+  path: '/learning',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PracticeRoute = PracticeRouteImport.update({
+  id: '/practice',
+  path: '/practice',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeacherRoute = TeacherRouteImport.update({
+  id: '/teacher',
+  path: '/teacher',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTtsRoute = ApiTtsRouteImport.update({
@@ -25,27 +49,62 @@ const ApiTtsRoute = ApiTtsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/confusion-graph': typeof ConfusionGraphRoute
+  '/learning': typeof LearningRoute
+  '/practice': typeof PracticeRoute
+  '/teacher': typeof TeacherRoute
   '/api/tts': typeof ApiTtsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/confusion-graph': typeof ConfusionGraphRoute
+  '/learning': typeof LearningRoute
+  '/practice': typeof PracticeRoute
+  '/teacher': typeof TeacherRoute
   '/api/tts': typeof ApiTtsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/confusion-graph': typeof ConfusionGraphRoute
+  '/learning': typeof LearningRoute
+  '/practice': typeof PracticeRoute
+  '/teacher': typeof TeacherRoute
   '/api/tts': typeof ApiTtsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/tts'
+  fullPaths:
+    | '/'
+    | '/confusion-graph'
+    | '/learning'
+    | '/practice'
+    | '/teacher'
+    | '/api/tts'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/tts'
-  id: '__root__' | '/' | '/api/tts'
+  to:
+    | '/'
+    | '/confusion-graph'
+    | '/learning'
+    | '/practice'
+    | '/teacher'
+    | '/api/tts'
+  id:
+    | '__root__'
+    | '/'
+    | '/confusion-graph'
+    | '/learning'
+    | '/practice'
+    | '/teacher'
+    | '/api/tts'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ConfusionGraphRoute: typeof ConfusionGraphRoute
+  LearningRoute: typeof LearningRoute
+  PracticeRoute: typeof PracticeRoute
+  TeacherRoute: typeof TeacherRoute
   ApiTtsRoute: typeof ApiTtsRoute
 }
 
@@ -56,6 +115,34 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/confusion-graph': {
+      id: '/confusion-graph'
+      path: '/confusion-graph'
+      fullPath: '/confusion-graph'
+      preLoaderRoute: typeof ConfusionGraphRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/learning': {
+      id: '/learning'
+      path: '/learning'
+      fullPath: '/learning'
+      preLoaderRoute: typeof LearningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/practice': {
+      id: '/practice'
+      path: '/practice'
+      fullPath: '/practice'
+      preLoaderRoute: typeof PracticeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/teacher': {
+      id: '/teacher'
+      path: '/teacher'
+      fullPath: '/teacher'
+      preLoaderRoute: typeof TeacherRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/tts': {
@@ -70,6 +157,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ConfusionGraphRoute: ConfusionGraphRoute,
+  LearningRoute: LearningRoute,
+  PracticeRoute: PracticeRoute,
+  TeacherRoute: TeacherRoute,
   ApiTtsRoute: ApiTtsRoute,
 }
 export const routeTree = rootRouteImport
