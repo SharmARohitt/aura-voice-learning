@@ -1,35 +1,55 @@
-const NAV = ["Classroom", "Learning", "Practice", "Confusion Graph", "Teacher"];
+import { Link } from "@tanstack/react-router";
+import logo from "@/assets/voice-bingo-logo.png";
+
+const NAV = [
+  { label: "Classroom", to: "/" },
+  { label: "Learning", to: "/learning" },
+  { label: "Practice", to: "/practice" },
+  { label: "Confusion Graph", to: "/confusion-graph" },
+  { label: "Teacher", to: "/teacher" },
+] as const;
 
 export function TopNav({ connected }: { connected: boolean }) {
   return (
     <header className="relative z-20 mx-auto max-w-[1500px] px-4 pt-6 sm:px-6">
-      <div className="flex items-center justify-between rounded-2xl border border-cream/10 bg-surface/40 px-4 py-3.5 backdrop-blur-xl sm:px-5">
-        <div className="flex items-center gap-3">
-          <div className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-amber to-rose font-display text-sm font-bold tracking-tight text-canvas">
-            VB
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cream/10 bg-surface/40 px-4 py-3.5 backdrop-blur-xl sm:px-5">
+        <Link to="/" className="flex items-center gap-3 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-amber/60">
+          <img
+            src={logo}
+            alt="Voice Bingo logo"
+            width={36}
+            height={36}
+            className="size-9 rounded-xl"
+          />
           <div>
             <h1 className="font-display text-[15px] font-bold leading-none">VOICE BINGO</h1>
             <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.28em] text-muted">
               Aura-PW
             </p>
           </div>
-        </div>
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
-          {NAV.map((item, i) => (
-            <span
-              key={item}
-              aria-current={i === 0 ? "page" : undefined}
-              className={
-                i === 0
-                  ? "rounded-lg bg-amber/10 px-3.5 py-2 text-[13px] font-medium text-amber ring-1 ring-amber/30"
-                  : "rounded-lg px-3.5 py-2 text-[13px] text-muted"
-              }
+        </Link>
+
+        <nav
+          className="order-3 flex w-full flex-wrap items-center gap-1 lg:order-none lg:w-auto"
+          aria-label="Primary"
+        >
+          {NAV.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              activeOptions={{ exact: item.to === "/" }}
+              className="rounded-lg px-3.5 py-2 text-[13px] text-muted transition-colors hover:bg-cream/5 hover:text-cream"
+              activeProps={{
+                className:
+                  "rounded-lg bg-amber/10 px-3.5 py-2 text-[13px] font-medium text-amber ring-1 ring-amber/30",
+                "aria-current": "page",
+              }}
             >
-              {item}
-            </span>
+              {item.label}
+            </Link>
           ))}
         </nav>
+
         <div className="flex items-center gap-3">
           <div
             className={`hidden items-center gap-2 rounded-full border px-3 py-1.5 sm:flex ${
