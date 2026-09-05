@@ -100,6 +100,7 @@ function Classroom({
 }) {
   const session = useVoiceSession(context);
   const { answer, state } = session;
+  const { ask } = Route.useSearch();
   const busy = ["UNDERSTANDING", "RETRIEVING", "REASONING"].includes(state);
   const learner = useMemo(() => profileFor(context), [context]);
   const topics = useMemo(
@@ -108,6 +109,13 @@ function Classroom({
   );
   const practiceRef = useRef<HTMLDivElement>(null);
   const started = Boolean(answer) || busy || session.question.length > 0;
+
+  const askedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!ask || askedRef.current === ask) return;
+    askedRef.current = ask;
+    session.askTyped(ask);
+  }, [ask, session]);
 
   const runAction = (action: HubAction, topic?: string) => {
     const subject = context.subjects[0] ?? "your syllabus";
