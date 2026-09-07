@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useAuth } from "@/hooks/useAuth";
-import { fetchProfile, resetProfile, saveProfile } from "@/lib/profile";
+import { createFileRoute } from "@tanstack/react-router";
 import { TopNav } from "@/components/classroom/TopNav";
 import { TranscriptPanel } from "@/components/classroom/TranscriptPanel";
 import { TeacherAvatar } from "@/components/classroom/TeacherAvatar";
@@ -63,39 +61,20 @@ const MODES: { key: TeachingMode; label: string }[] = [
 ];
 
 function Home() {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
   const [context, setContext] = useState<LearnerContext | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      navigate({ to: "/auth", replace: true });
-      return;
-    }
-    let active = true;
-    setReady(false);
-    fetchProfile(user.id).then((remote) => {
-      if (!active) return;
-      const local = loadContext();
-      const next = remote ?? local;
-      if (!remote && local) void saveProfile(user.id, local);
-      setContext(next);
-      setReady(true);
-    });
-    return () => {
-      active = false;
-    };
-  }, [user, loading, navigate]);
+    setContext(loadContext());
+    setReady(true);
+  }, []);
 
-  if (loading || !user || !ready) return <div className="min-h-screen bg-canvas" />;
+  if (!ready) return <div className="min-h-screen bg-canvas" />;
   if (!context)
     return (
       <Onboarding
         onDone={(next) => {
           saveContext(next);
-          void saveProfile(user.id, next);
           setContext(next);
         }}
       />
@@ -107,7 +86,6 @@ function Home() {
       context={context}
       onResetProfile={() => {
         clearContext();
-        void resetProfile(user.id);
         setContext(null);
       }}
     />
