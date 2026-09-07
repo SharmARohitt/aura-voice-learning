@@ -42,23 +42,31 @@ export function courseIdFor(context: LearnerContext, subject?: string): string |
   return map[s]?.[context.class_level];
 }
 
-export function loadContext(): LearnerContext | null {
+type StoredContext = LearnerContext & { user_id?: string };
+
+/**
+ * Local cache of the onboarding answers. It is always tied to one account:
+ * a different (or new) signed-in user never inherits someone else's setup.
+ */
+export function loadContext(userId?: string): LearnerContext | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as LearnerContext;
+    const parsed = JSON.parse(raw) as StoredContext;
     if (!parsed?.name || !parsed?.class_level) return null;
-    return parsed;
+    if (userId && parsed.user_id !== userId) return null;
+    const { user_id: _ignored, ...context } = parsed;
+    return context;
   } catch {
     return null;
   }
 }
 
-export function saveContext(context: LearnerContext): void {
+export function saveContext(context: LearnerContext, userId?: string): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(context));
+    window.localStorage.setItem(KEY, JSON.stringify({ ...context, user_id: userId }));
   } catch {
     /* storage unavailable — session still works in memory */
   }
