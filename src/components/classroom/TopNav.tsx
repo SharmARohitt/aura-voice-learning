@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import logo from "@/assets/voice-bingo-logo.png";
+import { clearContext, loadContext } from "@/lib/learner-context";
 
 const NAV = [
   { label: "Classroom", to: "/" },
