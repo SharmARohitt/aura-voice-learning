@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { AccountMenu } from "@/components/classroom/AccountMenu";
 import logo from "@/assets/voice-bingo-logo.png";
 
 const NAV = [
@@ -68,9 +69,7 @@ export function TopNav({ connected }: { connected: boolean }) {
               {connected ? "Voice ready" : "Voice offline"}
             </span>
           </div>
-          <div className="grid size-9 place-items-center rounded-full bg-gradient-to-br from-rose/70 to-amber/70 text-[12px] font-semibold text-canvas">
-            AR
-          </div>
+          <AccountMenu />
         </div>
       </div>
     </header>
