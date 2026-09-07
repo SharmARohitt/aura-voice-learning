@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import logo from "@/assets/voice-bingo-logo.png";
+import { clearContext, loadContext } from "@/lib/learner-context";
 
 const NAV = [
   { label: "Classroom", to: "/" },
@@ -68,9 +69,18 @@ export function TopNav({ connected }: { connected: boolean }) {
               {connected ? "Voice ready" : "Voice offline"}
             </span>
           </div>
-          <div className="grid size-9 place-items-center rounded-full bg-gradient-to-br from-rose/70 to-amber/70 text-[12px] font-semibold text-canvas">
-            AR
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              clearContext();
+              window.location.assign("/");
+            }}
+            title={loadContext()?.name ?? "Edit profile"}
+            aria-label="Edit profile (name, class, subjects)"
+            className="grid size-9 cursor-pointer place-items-center rounded-full bg-gradient-to-br from-rose/70 to-amber/70 text-[12px] font-semibold text-canvas outline-none transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-amber/60"
+          >
+            {(loadContext()?.name ?? "AR").slice(0, 2).toUpperCase()}
+          </button>
         </div>
       </div>
     </header>
