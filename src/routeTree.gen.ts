@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ConfusionGraphRouteImport } from './routes/confusion-graph'
 import { Route as LearningRouteImport } from './routes/learning'
 import { Route as PracticeRouteImport } from './routes/practice'
@@ -19,6 +20,11 @@ import { Route as ApiTtsRouteImport } from './routes/api/tts'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConfusionGraphRoute = ConfusionGraphRouteImport.update({
@@ -49,6 +55,7 @@ const ApiTtsRoute = ApiTtsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/confusion-graph': typeof ConfusionGraphRoute
   '/learning': typeof LearningRoute
   '/practice': typeof PracticeRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/confusion-graph': typeof ConfusionGraphRoute
   '/learning': typeof LearningRoute
   '/practice': typeof PracticeRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/confusion-graph': typeof ConfusionGraphRoute
   '/learning': typeof LearningRoute
   '/practice': typeof PracticeRoute
@@ -76,6 +85,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/confusion-graph'
     | '/learning'
     | '/practice'
@@ -84,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth'
     | '/confusion-graph'
     | '/learning'
     | '/practice'
@@ -92,6 +103,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/auth'
     | '/confusion-graph'
     | '/learning'
     | '/practice'
@@ -101,6 +113,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
   ConfusionGraphRoute: typeof ConfusionGraphRoute
   LearningRoute: typeof LearningRoute
   PracticeRoute: typeof PracticeRoute
@@ -115,6 +128,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/confusion-graph': {
@@ -157,6 +177,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
   ConfusionGraphRoute: ConfusionGraphRoute,
   LearningRoute: LearningRoute,
   PracticeRoute: PracticeRoute,
