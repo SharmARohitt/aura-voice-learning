@@ -76,14 +76,23 @@ function Home() {
     }
     let active = true;
     setReady(false);
-    fetchProfile(user.id).then((remote) => {
-      if (!active) return;
-      const local = loadContext();
-      const next = remote ?? local;
-      if (!remote && local) void saveProfile(user.id, local);
-      setContext(next);
-      setReady(true);
-    });
+    fetchProfile(user.id)
+      .then((remote) => {
+        if (!active) return;
+        // Only this account's own cached setup counts — a new sign-in always onboards.
+        const local = loadContext(user.id);
+        const next = remote ?? local;
+        if (remote) saveContext(remote, user.id);
+        else if (local) void saveProfile(user.id, local);
+        else clearContext();
+        setContext(next);
+        setReady(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        setContext(loadContext(user.id));
+        setReady(true);
+      });
     return () => {
       active = false;
     };
@@ -94,7 +103,7 @@ function Home() {
     return (
       <Onboarding
         onDone={(next) => {
-          saveContext(next);
+          saveContext(next, user.id);
           void saveProfile(user.id, next);
           setContext(next);
         }}
