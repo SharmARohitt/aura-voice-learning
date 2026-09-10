@@ -77,9 +77,9 @@ export interface ResolveDescriptor {
   topic: string;
   class_level: string;
   lecture_title: string;
-  timestamp_start?: string;
-  timestamp_end?: string;
-  source_url?: string;
+  timestamp_start?: string | undefined;
+  timestamp_end?: string | undefined;
+  source_url?: string | undefined;
   relevance: number;
 }
 
