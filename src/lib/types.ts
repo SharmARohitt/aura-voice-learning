@@ -68,6 +68,51 @@ export interface LectureChunk {
   prerequisites: string[];
   source_type: "lecture_transcript" | "notes" | "solved_example" | "question_bank";
   approval_status: "approved" | "pending";
+
+  // ── Source / replay metadata (optional so ingestion can fill it over time) ──
+  subtopic?: string;
+  keywords?: string[];
+  /** Where the original material lives. "internal" = indexed transcript only. */
+  source_platform?: "internal" | "youtube" | "web";
+  source_id?: string;
+  source_url?: string;
+  /** Last known access state; the resolver re-verifies and caches at runtime. */
+  access_status?: SourceAccessStatus;
+  last_verified_at?: string;
+}
+
+export type SourceAccessStatus =
+  | "PUBLIC"
+  | "ACCESSIBLE"
+  | "TEMPORARILY_UNAVAILABLE"
+  | "PRIVATE"
+  | "RESTRICTED"
+  | "REMOVED"
+  | "UNKNOWN";
+
+/** A verified, openable destination for a Replay / Learn action. */
+export interface ReplayTarget {
+  provider: string;
+  title: string;
+  author: string | null;
+  url: string;
+  /** Seconds into the resource; null when no trustworthy timestamp exists. */
+  start_seconds: number | null;
+  end_seconds: number | null;
+  label: string;
+  access_status: SourceAccessStatus;
+}
+
+export interface SourceResolution {
+  chunk_id: string;
+  /** "primary" = the indexed lecture itself is accessible. */
+  kind: "primary" | "alternative" | "search" | "unavailable";
+  target: ReplayTarget | null;
+  reason: string | null;
+  content_relevance: number;
+  source_usability: number;
+  validation_ms: number;
+  cached: boolean;
 }
 
 export interface RetrievedEvidence {

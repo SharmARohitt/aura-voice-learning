@@ -1,3 +1,4 @@
+import { SourceCard } from "@/components/classroom/SourceCard";
 import type { TeachingStrategy, TutorAnswer } from "@/lib/types";
 
 const STRATEGIES: { key: TeachingStrategy; label: string }[] = [
@@ -87,40 +88,7 @@ export function AnswerPanel({
         </section>
       )}
 
-      {top && (
-        <section className="rise-in flex flex-col gap-3 rounded-2xl border border-amber/25 bg-gradient-to-r from-amber/10 to-rose/10 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-amber">
-              Source · Grounded
-            </p>
-            <p className="text-[13px] font-medium text-cream">
-              {top.chunk.subject} — {top.chunk.chapter}
-            </p>
-            <p className="mt-0.5 font-mono text-[11px] text-muted">
-              Lecture {top.chunk.lecture_number} · {top.chunk.timestamp_start} →{" "}
-              {top.chunk.timestamp_end} · {top.chunk.teacher}
-            </p>
-          </div>
-          <div className="flex flex-col items-start gap-2 sm:items-end">
-            <span className="font-mono text-[10px] text-amber">
-              Relevance {Math.round(top.relevance * 100)}%
-            </span>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() =>
-                onFollowUp(
-                  `Explain what ${top.chunk.teacher} covers in Lecture ${top.chunk.lecture_number} at ${top.chunk.timestamp_start} about ${top.chunk.topic}.`,
-                )
-              }
-              className="rounded-lg bg-amber px-3 py-1.5 text-[11px] font-semibold text-canvas transition-opacity hover:opacity-90 disabled:opacity-50"
-              title="Replay this lecture moment as an explanation"
-            >
-              Replay {top.chunk.timestamp_start}
-            </button>
-          </div>
-        </section>
-      )}
+      {top && <SourceCard evidence={top} busy={busy} onFollowUp={onFollowUp} />}
 
       <div className="mt-5">
         <p className="mb-2.5 font-mono text-[9px] uppercase tracking-widest text-muted">
