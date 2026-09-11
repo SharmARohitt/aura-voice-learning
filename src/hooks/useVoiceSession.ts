@@ -239,18 +239,19 @@ export function useVoiceSession(context: LearnerContext) {
         const speakStart = performance.now();
         let firstAudio = false;
         void previewSpeech
-          .then(() =>
-            runId === runIdRef.current
-              ? ttsRef.current?.speak(spoken, (isSpeaking) => {
-            if (runId !== runIdRef.current) return;
-            setSpeaking(isSpeaking);
-            if (isSpeaking && !firstAudio) {
-              firstAudio = true;
-              const ttfa = Math.round(performance.now() - speakStart);
-              setAnswer((prev) =>
-                prev ? { ...prev, latency: { ...prev.latency, tts_ttfa_ms: ttfa } } : prev,
-              );
-            }
+          .then(() => {
+            if (runId !== runIdRef.current || spoken.length === 0) return;
+            return ttsRef.current?.speak(spoken, (isSpeaking) => {
+              if (runId !== runIdRef.current) return;
+              setSpeaking(isSpeaking);
+              if (isSpeaking && !firstAudio) {
+                firstAudio = true;
+                const ttfa = Math.round(performance.now() - speakStart);
+                setAnswer((prev) =>
+                  prev ? { ...prev, latency: { ...prev.latency, tts_ttfa_ms: ttfa } } : prev,
+                );
+              }
+            });
           })
           .catch(() => setSpeaking(false))
           .finally(() => {
