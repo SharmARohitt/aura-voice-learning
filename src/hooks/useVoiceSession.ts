@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { askTutor, generatePractice } from "@/lib/tutor.functions";
+import { askTutor, generatePractice, quickAnswer } from "@/lib/tutor.functions";
 import { courseIdFor, detectLanguageRequest } from "@/lib/learner-context";
 import { createSTTProvider, type STTProvider } from "@/lib/voice/stt";
 import { ResilientTTS, splitIntoSentences } from "@/lib/voice/tts";
@@ -39,10 +39,13 @@ let eventSeq = 0;
 export function useVoiceSession(context: LearnerContext) {
   const ask = useServerFn(askTutor);
   const makePractice = useServerFn(generatePractice);
+  const quick = useServerFn(quickAnswer);
   const [state, setState] = useState<VoiceState>("IDLE");
   const [partial, setPartial] = useState("");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<TutorAnswer | null>(null);
+  /** Fast first response shown before the full structured answer lands. */
+  const [preview, setPreview] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [micDenied, setMicDenied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -271,7 +274,7 @@ export function useVoiceSession(context: LearnerContext) {
         setState("ERROR");
       }
     },
-    [ask, context, logEvent, makePractice, weakConcepts],
+    [ask, context, logEvent, makePractice, quick, weakConcepts],
   );
 
   const startListening = useCallback(async () => {
@@ -375,6 +378,7 @@ export function useVoiceSession(context: LearnerContext) {
       partial,
       question,
       answer,
+      preview,
       error,
       micDenied,
       events,
@@ -400,6 +404,7 @@ export function useVoiceSession(context: LearnerContext) {
       partial,
       question,
       answer,
+      preview,
       error,
       micDenied,
       events,
