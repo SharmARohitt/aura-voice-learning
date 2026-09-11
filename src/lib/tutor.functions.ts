@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { chatJson, GatewayError, transcribeAudio } from "@/lib/ai-gateway.server";
+import { chatJson, chatText, GatewayError, transcribeAudio } from "@/lib/ai-gateway.server";
 import { retrieve, neighboursOf, GROUNDING_THRESHOLD } from "@/lib/rag/retriever.server";
 import { understand } from "@/lib/rag/query.server";
 import type { PracticeQuestion, TeachingMode, TutorAnswer } from "@/lib/types";
@@ -309,4 +309,62 @@ export const transcribeSpeech = createServerFn({ method: "POST" })
     const blob = new Blob([binary], { type: data.mime_type });
     const text = await transcribeAudio(blob, "speech.webm");
     return { text };
+  });
+
+// ── Fast first response ───────────────────────────────────────────────────
+// A tiny, capped, plain-text answer that lands in about a second so the
+// student sees and hears help immediately while the full structured
+// explanation is still being generated in parallel.
+
+const QuickInput = z.object({
+  question: z.string().min(2).max(1000),
+  language: z.enum(["english", "hindi", "hinglish", "adaptive"]).default("adaptive"),
+  mode: z
+    .enum([
+      "explain",
+      "deep_dive",
+      "quick_revision",
+      "exam_mode",
+      "practice",
+      "socratic",
+      "beginner",
+      "teacher",
+    ])
+    .default("explain"),
+  class_level: z.string().max(32).default(""),
+  subjects: z.array(z.string().max(40)).max(6).default([]),
+  course_id: z.string().max(64).optional(),
+});
+
+export const quickAnswer = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => QuickInput.parse(input))
+  .handler(async ({ data }): Promise<{ text: string; grounded: boolean; ms: number }> => {
+    const started = performance.now();
+    const retrieval = await retrieve(data.question, {
+      ...(data.course_id ? { course_id: data.course_id } : {}),
+      ...(data.subjects.length ? { subjects: data.subjects } : {}),
+      ...(data.class_level ? { class_level: data.class_level } : {}),
+    });
+    const top = retrieval.evidence[0];
+    const evidence =
+      retrieval.grounded && top
+        ? `Course evidence (${top.chunk.subject} · ${top.chunk.chapter}): ${top.chunk.text}`
+        : "No course evidence cleared the grounding threshold — answer from general knowledge.";
+
+    const text = await chatText(
+      [
+        {
+          role: "system",
+          content: `You are Aura, a warm Indian tutor. Give the opening 2 sentences of your explanation — the core idea only, no lists, no formulas, no markdown. ${LANGUAGE_INSTRUCTION[data.language]} ${MODE_INSTRUCTION[data.mode]} Never invent lecture numbers, teachers or timestamps.`,
+        },
+        { role: "user", content: `Doubt: "${data.question}"\n${evidence}` },
+      ],
+      120,
+    );
+
+    return {
+      text,
+      grounded: retrieval.grounded,
+      ms: Math.round(performance.now() - started),
+    };
   });
