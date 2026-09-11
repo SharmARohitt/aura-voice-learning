@@ -133,6 +133,8 @@ export interface RetrievalResult {
   candidates: number;
   filterUsed: string;
   prerequisiteGaps: string[];
+  /** True when this exact query+filter was served from the retrieval cache. */
+  cached?: boolean;
 }
 
 export interface Misconception {
@@ -194,6 +196,14 @@ export interface PipelineLatency {
   rerank_ms: number;
   llm_ms: number;
   total_ms: number;
+  /** Deterministic query understanding (no LLM). */
+  parse_ms?: number;
+  /** Retrieval served from the TTL cache. */
+  retrieval_cached?: boolean;
+  /** Background practice generation, measured client-side. */
+  practice_ms?: number;
+  /** Time to first spoken audio, measured client-side. */
+  tts_ttfa_ms?: number;
 }
 
 export interface LearnerProfile {

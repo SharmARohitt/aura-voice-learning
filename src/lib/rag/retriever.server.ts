@@ -1,15 +1,20 @@
-import { CORPUS } from "@/lib/knowledge/corpus";
+import {
+  canonicalClass,
+  expand,
+  knowledgeIndex,
+  tokenize,
+  TtlCache,
+  type IndexedChunk,
+} from "@/lib/rag/index.server";
 import type { LectureChunk, RetrievalResult, RetrievedEvidence } from "@/lib/types";
 
 /**
- * Hybrid retrieval over the approved educational index.
+ * Hybrid retrieval over the precomputed educational index.
  *
- * Channels: BM25-style lexical + concept-space semantic, fused with reciprocal
- * rank fusion and reranked. Metadata-aware (class, exam, subject, chapter),
- * multi-level (direct + prerequisite evidence) and prerequisite-aware.
- *
- * The repository interface is the swap point for pgvector / Qdrant / Chroma —
- * nothing above this file knows where the vectors live.
+ * Channels run over precomputed postings: BM25 lexical + concept-space
+ * semantic, fused with reciprocal rank fusion, then reranked. Metadata-aware
+ * (class, exam, subject, chapter), multi-level (direct + neighbour +
+ * prerequisite) and cached per normalised query.
  */
 
 export interface RetrievalFilter {
@@ -24,131 +29,100 @@ export interface RetrievalFilter {
 export interface KnowledgeRepository {
   search(query: string, filter: RetrievalFilter, limit?: number): Promise<RetrievedEvidence[]>;
   byConcept(concepts: string[], excludeIds: string[], limit?: number): Promise<LectureChunk[]>;
+  neighbours(chunkId: string): LectureChunk[];
   size(): number;
-}
-
-const STOPWORDS = new Set([
-  "the","a","an","is","are","was","were","of","to","in","on","for","and","or","kya","hai","ka",
-  "ki","ke","se","ko","mein","me","na","nahi","par","aur","yeh","woh","bata","batao","samjhao",
-  "samajh","please","my","i","it","this","that","do","does","can","you","explain","kaise","kyun",
-  "kyu","what","why","how","when","which","with","about","tell","mujhe","sir","maam",
-]);
-
-const SYNONYMS: Record<string, string[]> = {
-  potential: ["voltage", "potential"],
-  voltage: ["potential", "voltage"],
-  field: ["field", "electric"],
-  relation: ["relation", "relationship", "difference", "connect"],
-  difference: ["difference", "relation"],
-  recursion: ["recursion", "recursive"],
-  base: ["base", "terminating"],
-  charge: ["charge", "coulomb"],
-  derivative: ["derivative", "differentiation"],
-  differentiate: ["differentiation", "derivative"],
-  integration: ["integration", "integral", "antiderivative"],
-  integral: ["integration", "integral"],
-  mole: ["mole", "avogadro", "molar"],
-  photosynthesis: ["photosynthesis", "light", "calvin", "chloroplast"],
-  light: ["light", "photosynthesis"],
-  complexity: ["complexity", "big"],
-  force: ["force", "newton"],
-  heat: ["heat", "thermodynamics"],
-  trigonometry: ["trigonometry", "sin", "cos", "identities"],
-  gati: ["motion", "newton", "force"],
-  bal: ["force", "newton"],
-  urja: ["energy", "work"],
-  prakash: ["light", "photosynthesis"],
-};
-
-function tokenize(input: string): string[] {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9\u0900-\u097F\s]/g, " ")
-    .split(/\s+/)
-    .filter((t) => t.length > 1 && !STOPWORDS.has(t));
-}
-
-function expand(tokens: string[]): string[] {
-  const out = new Set(tokens);
-  for (const t of tokens) for (const s of SYNONYMS[t] ?? []) out.add(s);
-  return [...out];
-}
-
-function bm25(queryTokens: string[], chunk: LectureChunk, corpus: LectureChunk[]): number {
-  const k1 = 1.5;
-  const b = 0.75;
-  const docTokens = tokenize(`${chunk.text} ${chunk.concepts.join(" ")} ${chunk.topic} ${chunk.chapter}`);
-  const docLen = docTokens.length || 1;
-  const avgLen =
-    corpus.reduce((sum, c) => sum + tokenize(c.text).length, 0) / Math.max(corpus.length, 1) || 1;
-
-  let score = 0;
-  for (const term of queryTokens) {
-    const tf = docTokens.filter((t) => t === term || t.startsWith(term)).length;
-    if (tf === 0) continue;
-    const df = corpus.filter((c) => tokenize(c.text).some((t) => t.startsWith(term))).length || 1;
-    const idf = Math.log(1 + (corpus.length - df + 0.5) / (df + 0.5));
-    score += idf * ((tf * (k1 + 1)) / (tf + k1 * (1 - b + (b * docLen) / avgLen)));
-  }
-  return score;
-}
-
-/** Concept-space overlap — stands in for the dense vector similarity channel. */
-function conceptSimilarity(queryTokens: string[], chunk: LectureChunk): number {
-  const conceptTokens = new Set(tokenize(`${chunk.concepts.join(" ")} ${chunk.topic}`));
-  if (conceptTokens.size === 0) return 0;
-  let hits = 0;
-  for (const t of queryTokens) {
-    for (const c of conceptTokens) {
-      if (c === t || c.startsWith(t) || t.startsWith(c)) {
-        hits += 1;
-        break;
-      }
-    }
-  }
-  return hits / Math.max(queryTokens.length, 1);
 }
 
 function rrf(rank: number): number {
   return 1 / (60 + rank);
 }
 
-export class InMemoryKnowledgeRepository implements KnowledgeRepository {
-  constructor(private readonly corpus: LectureChunk[] = CORPUS) {}
+function idf(term: string): number {
+  const index = knowledgeIndex();
+  const df = index.df.get(term) ?? index.prefixDf.get(term.slice(0, 4)) ?? 0;
+  if (df === 0) return 0;
+  return Math.log(1 + (index.size - df + 0.5) / (df + 0.5));
+}
 
+/** Term frequency with cheap prefix matching against the precomputed map. */
+function termFrequency(doc: IndexedChunk, term: string): number {
+  const direct = doc.tf.get(term);
+  if (direct) return direct;
+  let tf = 0;
+  for (const [t, count] of doc.tf) {
+    if (t.startsWith(term) || term.startsWith(t)) tf += count;
+  }
+  return tf;
+}
+
+function bm25(tokens: string[], doc: IndexedChunk): number {
+  const k1 = 1.5;
+  const b = 0.75;
+  const avg = knowledgeIndex().avgLength;
+  let score = 0;
+  for (const term of tokens) {
+    const tf = termFrequency(doc, term);
+    if (tf === 0) continue;
+    score += idf(term) * ((tf * (k1 + 1)) / (tf + k1 * (1 - b + (b * doc.length) / avg)));
+  }
+  return score;
+}
+
+/** Concept-space overlap — the dense/semantic channel of the hybrid search. */
+function conceptSimilarity(tokens: string[], doc: IndexedChunk): number {
+  if (doc.conceptTokens.size === 0) return 0;
+  let hits = 0;
+  for (const t of tokens) {
+    for (const c of doc.conceptTokens) {
+      if (c === t || c.startsWith(t) || t.startsWith(c)) {
+        hits += 1;
+        break;
+      }
+    }
+  }
+  return hits / Math.max(tokens.length, 1);
+}
+
+export class IndexedKnowledgeRepository implements KnowledgeRepository {
   size(): number {
-    return this.corpus.length;
+    return knowledgeIndex().size;
   }
 
-  private pool(filter: RetrievalFilter): LectureChunk[] {
-    return this.corpus.filter(
-      (c) =>
-        c.approval_status === "approved" &&
-        (!filter.course_id || c.course_id === filter.course_id) &&
-        (!filter.subject || c.subject === filter.subject) &&
-        (!filter.subjects?.length || filter.subjects.includes(c.subject)) &&
-        (!filter.chapter || c.chapter === filter.chapter) &&
-        (!filter.class_level || c.class_level === filter.class_level) &&
-        (!filter.exam || c.exams.includes(filter.exam)),
+  private pool(filter: RetrievalFilter): IndexedChunk[] {
+    const wantedClass = canonicalClass(filter.class_level);
+    return knowledgeIndex().chunks.filter(
+      (d) =>
+        d.chunk.approval_status === "approved" &&
+        (!filter.course_id || d.chunk.course_id === filter.course_id) &&
+        (!filter.subject || d.chunk.subject === filter.subject) &&
+        (!filter.subjects?.length || filter.subjects.includes(d.chunk.subject)) &&
+        (!filter.chapter || d.chunk.chapter === filter.chapter) &&
+        (!wantedClass || d.classCanonical === wantedClass) &&
+        (!filter.exam || d.chunk.exams.includes(filter.exam)),
     );
   }
 
+  neighbours(chunkId: string): LectureChunk[] {
+    const index = knowledgeIndex();
+    const doc = index.byId.get(chunkId);
+    if (!doc) return [];
+    return [doc.prevId, doc.nextId]
+      .map((id) => (id ? index.byId.get(id)?.chunk : undefined))
+      .filter((c): c is LectureChunk => Boolean(c));
+  }
+
   async byConcept(concepts: string[], excludeIds: string[], limit = 2): Promise<LectureChunk[]> {
-    const wanted = new Set(concepts.map((c) => c.toLowerCase()));
-    if (wanted.size === 0) return [];
-    return this.corpus
-      .filter(
-        (c) =>
-          c.approval_status === "approved" &&
-          !excludeIds.includes(c.chunk_id) &&
-          [...c.concepts, c.topic].some((concept) =>
-            [...wanted].some(
-              (w) =>
-                concept.toLowerCase().includes(w) || w.includes(concept.toLowerCase()),
-            ),
-          ),
-      )
-      .slice(0, limit);
+    const wanted = concepts.map((c) => c.toLowerCase()).filter(Boolean);
+    if (wanted.length === 0) return [];
+    const out: LectureChunk[] = [];
+    for (const doc of knowledgeIndex().chunks) {
+      if (out.length >= limit) break;
+      const c = doc.chunk;
+      if (c.approval_status !== "approved" || excludeIds.includes(c.chunk_id)) continue;
+      const labels = [...c.concepts, c.topic].map((l) => l.toLowerCase());
+      if (labels.some((l) => wanted.some((w) => l.includes(w) || w.includes(l)))) out.push(c);
+    }
+    return out;
   }
 
   async search(query: string, filter: RetrievalFilter, limit = 4): Promise<RetrievedEvidence[]> {
@@ -158,19 +132,21 @@ export class InMemoryKnowledgeRepository implements KnowledgeRepository {
     const tokens = expand(tokenize(query));
     if (tokens.length === 0) return [];
 
+    // Both channels score the same candidate pool — cheap because every doc
+    // already carries its term-frequency map.
     const lexical = pool
-      .map((chunk) => ({ chunk, score: bm25(tokens, chunk, pool) }))
+      .map((doc) => ({ doc, score: bm25(tokens, doc) }))
       .sort((a, b) => b.score - a.score);
     const semantic = pool
-      .map((chunk) => ({ chunk, score: conceptSimilarity(tokens, chunk) }))
+      .map((doc) => ({ doc, score: conceptSimilarity(tokens, doc) }))
       .sort((a, b) => b.score - a.score);
 
     const maxLex = Math.max(...lexical.map((l) => l.score), 1e-6);
     const fused = new Map<string, RetrievedEvidence & { fusion: number }>();
 
     lexical.forEach((entry, i) => {
-      fused.set(entry.chunk.chunk_id, {
-        chunk: entry.chunk,
+      fused.set(entry.doc.chunk.chunk_id, {
+        chunk: entry.doc.chunk,
         lexical: entry.score / maxLex,
         semantic: 0,
         relevance: 0,
@@ -179,7 +155,7 @@ export class InMemoryKnowledgeRepository implements KnowledgeRepository {
       });
     });
     semantic.forEach((entry, i) => {
-      const existing = fused.get(entry.chunk.chunk_id);
+      const existing = fused.get(entry.doc.chunk.chunk_id);
       if (existing) {
         existing.semantic = entry.score;
         existing.fusion += rrf(i);
@@ -207,10 +183,15 @@ export class InMemoryKnowledgeRepository implements KnowledgeRepository {
 /** Below this the system refuses to claim course grounding. */
 export const GROUNDING_THRESHOLD = 0.45;
 
-const repository: KnowledgeRepository = new InMemoryKnowledgeRepository();
+const repository: KnowledgeRepository = new IndexedKnowledgeRepository();
+const retrievalCache = new TtlCache<RetrievalResult>(5 * 60_000, 150);
 
 export function knowledgeSize(): number {
   return repository.size();
+}
+
+export function neighboursOf(chunkId: string): LectureChunk[] {
+  return repository.neighbours(chunkId);
 }
 
 /**
@@ -221,7 +202,16 @@ export async function retrieve(
   query: string,
   filter: RetrievalFilter = {},
 ): Promise<RetrievalResult> {
-  const started = Date.now();
+  const started = performance.now();
+  const cacheKey = `${query.trim().toLowerCase()}|${JSON.stringify(filter)}`;
+  const cachedResult = retrievalCache.get(cacheKey);
+  if (cachedResult) {
+    return {
+      ...cachedResult,
+      cached: true,
+      latencyMs: Number((performance.now() - started).toFixed(1)),
+    };
+  }
 
   const cascade: { label: string; filter: RetrievalFilter }[] = [
     { label: "exact", filter },
@@ -251,7 +241,7 @@ export async function retrieve(
     if (evidence.length > 0) filterUsed = step.label;
   }
 
-  const rerankStart = Date.now();
+  const rerankStart = performance.now();
   const topRelevance = evidence[0]?.relevance ?? 0;
 
   // Multi-level: pull the prerequisite evidence behind the top hit.
@@ -272,16 +262,19 @@ export async function retrieve(
       });
     }
   }
-  const rerankMs = Date.now() - rerankStart;
+  const rerankMs = Number((performance.now() - rerankStart).toFixed(1));
 
-  return {
+  const result: RetrievalResult = {
     evidence,
     topRelevance,
     grounded: topRelevance >= GROUNDING_THRESHOLD,
-    latencyMs: Date.now() - started,
+    latencyMs: Number((performance.now() - started).toFixed(1)),
     rerankMs,
     candidates: repository.size(),
     filterUsed,
     prerequisiteGaps,
+    cached: false,
   };
+  retrievalCache.set(cacheKey, result);
+  return result;
 }

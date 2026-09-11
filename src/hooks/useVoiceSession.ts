@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { askTutor } from "@/lib/tutor.functions";
+import { askTutor, generatePractice, quickAnswer } from "@/lib/tutor.functions";
 import { courseIdFor, detectLanguageRequest } from "@/lib/learner-context";
 import { createSTTProvider, type STTProvider } from "@/lib/voice/stt";
 import { ResilientTTS, splitIntoSentences } from "@/lib/voice/tts";
@@ -38,10 +38,14 @@ let eventSeq = 0;
 
 export function useVoiceSession(context: LearnerContext) {
   const ask = useServerFn(askTutor);
+  const makePractice = useServerFn(generatePractice);
+  const quick = useServerFn(quickAnswer);
   const [state, setState] = useState<VoiceState>("IDLE");
   const [partial, setPartial] = useState("");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<TutorAnswer | null>(null);
+  /** Fast first response shown before the full structured answer lands. */
+  const [preview, setPreview] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [micDenied, setMicDenied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -54,6 +58,8 @@ export function useVoiceSession(context: LearnerContext) {
   const sttRef = useRef<STTProvider | null>(null);
   const ttsRef = useRef<ResilientTTS | null>(null);
   const lastQuestionRef = useRef("");
+  /** Compact conversation context — follow-ups inherit subject + chapter. */
+  const convRef = useRef<{ subject: string; chapter: string }>({ subject: "", chapter: "" });
   const runIdRef = useRef(0);
   const modeRef = useRef(mode);
   const langRef = useRef(language);
@@ -115,6 +121,37 @@ export function useVoiceSession(context: LearnerContext) {
 
       try {
         setState("RETRIEVING");
+        setPreview("");
+
+        // Fast path: a capped two-sentence answer lands ~1s ahead of the full
+        // structured explanation and starts speaking immediately.
+        let previewSpeech: Promise<void> = Promise.resolve();
+        let previewSpoken = false;
+        let fullArrived = false;
+        const previewRun = quick({
+          data: {
+            question: text,
+            language: effectiveLanguage,
+            mode: activeMode,
+            class_level: context.class_level,
+            subjects: context.subjects,
+            ...(courseIdFor(context) ? { course_id: courseIdFor(context)! } : {}),
+          },
+        })
+          .then((r) => {
+            if (runId !== runIdRef.current || fullArrived || !r.text) return;
+            previewSpoken = true;
+            setPreview(r.text);
+            setState("RESPONDING");
+            previewSpeech = (
+              ttsRef.current?.speak(splitIntoSentences(r.text).filter(Boolean), (isSpeaking) => {
+                if (runId === runIdRef.current) setSpeaking(isSpeaking);
+              }) ?? Promise.resolve()
+            ).catch(() => undefined);
+          })
+          .catch(() => undefined);
+        void previewRun;
+
         const result = await ask({
           data: {
             question: text,
@@ -127,11 +164,42 @@ export function useVoiceSession(context: LearnerContext) {
             subjects: context.subjects,
             weak_concepts: weakConcepts,
             ...(courseIdFor(context) ? { course_id: courseIdFor(context)! } : {}),
+            ...(convRef.current.subject ? { context_subject: convRef.current.subject } : {}),
+            ...(convRef.current.chapter ? { context_chapter: convRef.current.chapter } : {}),
           },
         });
+        fullArrived = true;
         if (runId !== runIdRef.current) return; // superseded by a newer question
         setState("REASONING");
         setAnswer(result);
+        convRef.current = { subject: result.subject, chapter: result.chapter };
+
+        // Practice is generated in the background so it never delays the answer.
+        const practiceStart = performance.now();
+        void makePractice({
+          data: {
+            question: text,
+            concept: result.concepts[0] ?? result.chapter ?? "",
+            language: effectiveLanguage,
+            difficulty: result.difficulty,
+          },
+        })
+          .then((items) => {
+            if (runId !== runIdRef.current) return;
+            setAnswer((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    practice: items,
+                    latency: {
+                      ...prev.latency,
+                      practice_ms: Math.round(performance.now() - practiceStart),
+                    },
+                  }
+                : prev,
+            );
+          })
+          .catch(() => undefined);
 
         logEvent(
           result.grounded
@@ -162,12 +230,31 @@ export function useVoiceSession(context: LearnerContext) {
 
         // Speaking never blocks the pipeline — the UI is interactive instantly.
         setState("RESPONDING");
-        const spoken = [result.short_answer, ...result.sections.slice(0, 2).map((s) => s.body)]
+        // If the fast answer already spoke the opening, continue from the
+        // sections instead of repeating it.
+        const spoken = (
+          previewSpoken
+            ? result.sections.slice(0, 2).map((s) => s.body)
+            : [result.short_answer, ...result.sections.slice(0, 2).map((s) => s.body)]
+        )
           .flatMap(splitIntoSentences)
           .filter(Boolean);
-        void ttsRef.current
-          ?.speak(spoken, (isSpeaking) => {
-            if (runId === runIdRef.current) setSpeaking(isSpeaking);
+        const speakStart = performance.now();
+        let firstAudio = false;
+        void previewSpeech
+          .then(() => {
+            if (runId !== runIdRef.current || spoken.length === 0) return;
+            return ttsRef.current?.speak(spoken, (isSpeaking) => {
+              if (runId !== runIdRef.current) return;
+              setSpeaking(isSpeaking);
+              if (isSpeaking && !firstAudio) {
+                firstAudio = true;
+                const ttfa = Math.round(performance.now() - speakStart);
+                setAnswer((prev) =>
+                  prev ? { ...prev, latency: { ...prev.latency, tts_ttfa_ms: ttfa } } : prev,
+                );
+              }
+            });
           })
           .catch(() => setSpeaking(false))
           .finally(() => {
@@ -187,7 +274,7 @@ export function useVoiceSession(context: LearnerContext) {
         setState("ERROR");
       }
     },
-    [ask, context, logEvent, weakConcepts],
+    [ask, context, logEvent, makePractice, quick, weakConcepts],
   );
 
   const startListening = useCallback(async () => {
@@ -291,6 +378,7 @@ export function useVoiceSession(context: LearnerContext) {
       partial,
       question,
       answer,
+      preview,
       error,
       micDenied,
       events,
@@ -316,6 +404,7 @@ export function useVoiceSession(context: LearnerContext) {
       partial,
       question,
       answer,
+      preview,
       error,
       micDenied,
       events,
