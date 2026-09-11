@@ -281,6 +281,19 @@ function Classroom({
           </div>
         )}
 
+        {/* Fast first response — shown while the full explanation loads. */}
+        {!answer && session.preview && (
+          <div className="rise-in mx-auto mt-10 max-w-3xl rounded-3xl border border-amber/20 bg-surface/35 p-5 backdrop-blur-xl sm:p-6">
+            <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-amber">
+              First answer
+            </p>
+            <p className="mt-2 text-[15px] leading-relaxed text-cream">{session.preview}</p>
+            <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted">
+              Full explanation, sources and practice loading…
+            </p>
+          </div>
+        )}
+
         {/* ── Answer surface stays below the orb; the session never ends ── */}
         {answer && (
           <div className="mx-auto mt-10 max-w-3xl rounded-3xl border border-cream/10 bg-surface/35 p-5 backdrop-blur-xl sm:p-6">
