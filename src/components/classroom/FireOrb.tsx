@@ -33,7 +33,7 @@ const TUNING: Record<OrbMode, Tuning> = {
   listening: { energy: 0.72, breathe: 0.05, spin: 0.42, particles: 34, glow: 0.85, hueShift: 6 },
   thinking: { energy: 0.6, breathe: 0.018, spin: 0.95, particles: 28, glow: 0.7, hueShift: -8 },
   speaking: { energy: 1, breathe: 0.075, spin: 0.55, particles: 40, glow: 1, hueShift: 4 },
-  error: { energy: 0.28, breathe: 0.02, spin: 0.1, particles: 10, glow: 0.4, hueShift: -26 },
+  error: { energy: 0.22, breathe: 0.016, spin: 0.08, particles: 8, glow: 0.32, hueShift: -12 },
 };
 
 type Particle = { a: number; r: number; v: number; s: number; life: number };
