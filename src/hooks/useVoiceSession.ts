@@ -227,13 +227,21 @@ export function useVoiceSession(context: LearnerContext) {
 
         // Speaking never blocks the pipeline — the UI is interactive instantly.
         setState("RESPONDING");
-        const spoken = [result.short_answer, ...result.sections.slice(0, 2).map((s) => s.body)]
+        // If the fast answer already spoke the opening, continue from the
+        // sections instead of repeating it.
+        const spoken = (
+          previewSpoken
+            ? result.sections.slice(0, 2).map((s) => s.body)
+            : [result.short_answer, ...result.sections.slice(0, 2).map((s) => s.body)]
+        )
           .flatMap(splitIntoSentences)
           .filter(Boolean);
         const speakStart = performance.now();
         let firstAudio = false;
-        void ttsRef.current
-          ?.speak(spoken, (isSpeaking) => {
+        void previewSpeech
+          .then(() =>
+            runId === runIdRef.current
+              ? ttsRef.current?.speak(spoken, (isSpeaking) => {
             if (runId !== runIdRef.current) return;
             setSpeaking(isSpeaking);
             if (isSpeaking && !firstAudio) {
