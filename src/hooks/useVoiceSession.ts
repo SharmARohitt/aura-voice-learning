@@ -165,6 +165,7 @@ export function useVoiceSession(context: LearnerContext) {
             ...(convRef.current.chapter ? { context_chapter: convRef.current.chapter } : {}),
           },
         });
+        fullArrived = true;
         if (runId !== runIdRef.current) return; // superseded by a newer question
         setState("REASONING");
         setAnswer(result);
