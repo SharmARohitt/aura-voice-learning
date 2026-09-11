@@ -273,18 +273,26 @@ interface PracticeOutput {
 export const generatePractice = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => PracticeInput.parse(input))
   .handler(async ({ data }): Promise<PracticeQuestion[]> => {
-    const model = await chatJson<PracticeOutput>([
-      {
-        role: "system",
-        content: `You write practice questions for Indian students. ${LANGUAGE_INSTRUCTION[data.language]}
+    // Practice runs in the background: a bad model response must degrade to
+    // "no practice yet", never bubble up as a session error.
+    let model: PracticeOutput = { practice: [] };
+    try {
+      model = await chatJson<PracticeOutput>([
+        {
+          role: "system",
+          content: `You write practice questions for Indian students. ${LANGUAGE_INSTRUCTION[data.language]}
 Return ONLY JSON: {"practice":[{"level":"easy"|"similar"|"transfer","question":string,"options":string[3-4],"answer_index":number,"explanation":string}]}
 Exactly 3 items — easy, similar, transfer — pitched at ${data.difficulty} level.`,
-      },
-      {
-        role: "user",
-        content: `Student doubt: "${data.question}"\nConcept: ${data.concept || "as implied by the doubt"}`,
-      },
-    ]);
+        },
+        {
+          role: "user",
+          content: `Student doubt: "${data.question}"\nConcept: ${data.concept || "as implied by the doubt"}`,
+        },
+      ]);
+    } catch (err) {
+      console.error("[practice] generation failed", err);
+      return [];
+    }
 
     return (model.practice ?? []).slice(0, 3).map((p, i) => ({
       id: `q-${Date.now().toString(36)}-${i}`,
