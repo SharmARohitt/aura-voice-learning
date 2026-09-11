@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { TopNav } from "@/components/classroom/TopNav";
 import { TranscriptPanel } from "@/components/classroom/TranscriptPanel";
-import { TeacherAvatar } from "@/components/classroom/TeacherAvatar";
+import { FireOrb, orbModeFor, type OrbMode } from "@/components/classroom/FireOrb";
 import { AnswerPanel } from "@/components/classroom/AnswerPanel";
 import { ContextPanel } from "@/components/classroom/ContextPanel";
 import { PracticePanel } from "@/components/classroom/PracticePanel";
