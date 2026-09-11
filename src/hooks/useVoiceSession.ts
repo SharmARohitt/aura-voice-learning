@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { askTutor } from "@/lib/tutor.functions";
+import { askTutor, generatePractice } from "@/lib/tutor.functions";
 import { courseIdFor, detectLanguageRequest } from "@/lib/learner-context";
 import { createSTTProvider, type STTProvider } from "@/lib/voice/stt";
 import { ResilientTTS, splitIntoSentences } from "@/lib/voice/tts";
@@ -38,6 +38,7 @@ let eventSeq = 0;
 
 export function useVoiceSession(context: LearnerContext) {
   const ask = useServerFn(askTutor);
+  const makePractice = useServerFn(generatePractice);
   const [state, setState] = useState<VoiceState>("IDLE");
   const [partial, setPartial] = useState("");
   const [question, setQuestion] = useState("");
@@ -54,6 +55,8 @@ export function useVoiceSession(context: LearnerContext) {
   const sttRef = useRef<STTProvider | null>(null);
   const ttsRef = useRef<ResilientTTS | null>(null);
   const lastQuestionRef = useRef("");
+  /** Compact conversation context — follow-ups inherit subject + chapter. */
+  const convRef = useRef<{ subject: string; chapter: string }>({ subject: "", chapter: "" });
   const runIdRef = useRef(0);
   const modeRef = useRef(mode);
   const langRef = useRef(language);
@@ -127,11 +130,41 @@ export function useVoiceSession(context: LearnerContext) {
             subjects: context.subjects,
             weak_concepts: weakConcepts,
             ...(courseIdFor(context) ? { course_id: courseIdFor(context)! } : {}),
+            ...(convRef.current.subject ? { context_subject: convRef.current.subject } : {}),
+            ...(convRef.current.chapter ? { context_chapter: convRef.current.chapter } : {}),
           },
         });
         if (runId !== runIdRef.current) return; // superseded by a newer question
         setState("REASONING");
         setAnswer(result);
+        convRef.current = { subject: result.subject, chapter: result.chapter };
+
+        // Practice is generated in the background so it never delays the answer.
+        const practiceStart = performance.now();
+        void makePractice({
+          data: {
+            question: text,
+            concept: result.concepts[0] ?? result.chapter ?? "",
+            language: effectiveLanguage,
+            difficulty: result.difficulty,
+          },
+        })
+          .then((items) => {
+            if (runId !== runIdRef.current) return;
+            setAnswer((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    practice: items,
+                    latency: {
+                      ...prev.latency,
+                      practice_ms: Math.round(performance.now() - practiceStart),
+                    },
+                  }
+                : prev,
+            );
+          })
+          .catch(() => undefined);
 
         logEvent(
           result.grounded
@@ -165,9 +198,19 @@ export function useVoiceSession(context: LearnerContext) {
         const spoken = [result.short_answer, ...result.sections.slice(0, 2).map((s) => s.body)]
           .flatMap(splitIntoSentences)
           .filter(Boolean);
+        const speakStart = performance.now();
+        let firstAudio = false;
         void ttsRef.current
           ?.speak(spoken, (isSpeaking) => {
-            if (runId === runIdRef.current) setSpeaking(isSpeaking);
+            if (runId !== runIdRef.current) return;
+            setSpeaking(isSpeaking);
+            if (isSpeaking && !firstAudio) {
+              firstAudio = true;
+              const ttfa = Math.round(performance.now() - speakStart);
+              setAnswer((prev) =>
+                prev ? { ...prev, latency: { ...prev.latency, tts_ttfa_ms: ttfa } } : prev,
+              );
+            }
           })
           .catch(() => setSpeaking(false))
           .finally(() => {
@@ -187,7 +230,7 @@ export function useVoiceSession(context: LearnerContext) {
         setState("ERROR");
       }
     },
-    [ask, context, logEvent, weakConcepts],
+    [ask, context, logEvent, makePractice, weakConcepts],
   );
 
   const startListening = useCallback(async () => {

@@ -67,6 +67,40 @@ export async function chatJson<T>(messages: ChatMessage[], signal?: AbortSignal)
   }
 }
 
+/**
+ * Plain-text completion with a hard output cap — used for the fast first
+ * response so the student hears something within about a second.
+ */
+export async function chatText(
+  messages: ChatMessage[],
+  maxTokens = 160,
+  signal?: AbortSignal,
+): Promise<string> {
+  const res = await fetch(`${GATEWAY_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey()}`,
+      "X-Lovable-AIG-SDK": "fetch",
+    },
+    body: JSON.stringify({ model: CHAT_MODEL, messages, max_tokens: maxTokens }),
+    ...(signal ? { signal } : {}),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error("[ai-gateway] quick chat failed", res.status, body.slice(0, 300));
+    throw new GatewayError(
+      res.status,
+      res.status === 402
+        ? "AI credits are exhausted for this workspace."
+        : "The tutor is temporarily unavailable.",
+      res.status === 429 || res.status >= 500,
+    );
+  }
+  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  return (data.choices?.[0]?.message?.content ?? "").trim();
+}
+
 export async function transcribeAudio(file: Blob, filename: string): Promise<string> {
   const form = new FormData();
   form.append("file", file, filename);

@@ -3,8 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { PageShell } from "@/components/classroom/PageShell";
 import { PracticePanel } from "@/components/classroom/PracticePanel";
-import { askTutor } from "@/lib/tutor.functions";
-import { courseIdFor, loadContext } from "@/lib/learner-context";
+import { generatePractice } from "@/lib/tutor.functions";
+import { loadContext } from "@/lib/learner-context";
 import { suggestTopics } from "@/lib/knowledge/corpus";
 import type { LearnerContext, PracticeQuestion } from "@/lib/types";
 
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/practice")({
 });
 
 function PracticePage() {
-  const ask = useServerFn(askTutor);
+  const ask = useServerFn(generatePractice);
   const [context, setContext] = useState<LearnerContext | null>(null);
   const [topic, setTopic] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,23 +56,17 @@ function PracticePage() {
     setError(null);
     setQuestions([]);
     try {
-      const answer = await ask({
+      const items = await ask({
         data: {
           question: `Give me graded practice questions on ${focus}.`,
-          strategy: "default",
-          mode: "practice",
+          concept: focus,
           language: context?.language ?? "adaptive",
-          student_name: context?.name ?? "Student",
-          class_level: context?.class_level ?? "",
-          goal: context?.goal ?? "",
-          subjects: context?.subjects ?? [],
-          ...(context ? { course_id: courseIdFor(context) } : {}),
-          weak_concepts: [],
+          difficulty: "medium" as const,
         },
       });
-      setQuestions(answer.practice);
-      setConcept(answer.concepts[0] ?? focus);
-      if (answer.practice.length === 0) setError("No practice could be generated for that topic.");
+      setQuestions(items);
+      setConcept(focus);
+      if (items.length === 0) setError("No practice could be generated for that topic.");
     } catch {
       setError("Practice generation failed. Try again in a moment.");
     } finally {

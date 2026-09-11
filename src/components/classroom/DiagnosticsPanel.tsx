@@ -31,9 +31,19 @@ export function DiagnosticsPanel({ answer, events, activeStage }: Props) {
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Stat label="Retrieval" value={answer ? `${answer.latency.retrieval_ms}ms` : "—"} />
+        <Stat label="Query parse" value={answer ? `${answer.latency.parse_ms ?? 0}ms` : "—"} />
+        <Stat
+          label="Retrieval"
+          value={
+            answer
+              ? `${answer.latency.retrieval_ms}ms${answer.latency.retrieval_cached ? " ·c" : ""}`
+              : "—"
+          }
+        />
         <Stat label="Rerank" value={answer ? `${answer.latency.rerank_ms}ms` : "—"} />
         <Stat label="Reasoning" value={answer ? `${answer.latency.llm_ms}ms` : "—"} />
+        <Stat label="First audio" value={answer?.latency.tts_ttfa_ms ? `${answer.latency.tts_ttfa_ms}ms` : "—"} />
+        <Stat label="Practice (bg)" value={answer?.latency.practice_ms ? `${answer.latency.practice_ms}ms` : "—"} />
         <Stat label="End to end" value={answer ? `${answer.latency.total_ms}ms` : "—"} />
       </dl>
 
