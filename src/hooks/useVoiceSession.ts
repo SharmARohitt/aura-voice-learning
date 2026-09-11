@@ -118,6 +118,37 @@ export function useVoiceSession(context: LearnerContext) {
 
       try {
         setState("RETRIEVING");
+        setPreview("");
+
+        // Fast path: a capped two-sentence answer lands ~1s ahead of the full
+        // structured explanation and starts speaking immediately.
+        let previewSpeech: Promise<void> = Promise.resolve();
+        let previewSpoken = false;
+        let fullArrived = false;
+        const previewRun = quick({
+          data: {
+            question: text,
+            language: effectiveLanguage,
+            mode: activeMode,
+            class_level: context.class_level,
+            subjects: context.subjects,
+            ...(courseIdFor(context) ? { course_id: courseIdFor(context)! } : {}),
+          },
+        })
+          .then((r) => {
+            if (runId !== runIdRef.current || fullArrived || !r.text) return;
+            previewSpoken = true;
+            setPreview(r.text);
+            setState("RESPONDING");
+            previewSpeech = (
+              ttsRef.current?.speak(splitIntoSentences(r.text).filter(Boolean), (isSpeaking) => {
+                if (runId === runIdRef.current) setSpeaking(isSpeaking);
+              }) ?? Promise.resolve()
+            ).catch(() => undefined);
+          })
+          .catch(() => undefined);
+        void previewRun;
+
         const result = await ask({
           data: {
             question: text,
