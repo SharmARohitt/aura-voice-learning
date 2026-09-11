@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Mic, Square, ArrowUp } from "lucide-react";
 import type { VoiceState } from "@/lib/types";
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
   onTyped: (text: string) => void;
 }
 
+/** Presentational only — all voice behaviour stays in useVoiceSession. */
 export function MicControl({
   state,
   listening,
@@ -34,70 +36,45 @@ export function MicControl({
   };
 
   return (
-    <div className="mt-5 rounded-3xl border border-cream/10 bg-surface/40 px-5 py-5 backdrop-blur-xl sm:px-6">
-      <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={listening ? onStop : onStart}
-            disabled={sttMode === "unavailable" || busy}
-            aria-pressed={listening}
-            aria-label={listening ? "Stop listening" : "Start listening"}
-            className="relative grid place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber disabled:opacity-50"
-          >
-            {listening && (
-              <span className="ring-pulse absolute inset-0 rounded-full bg-rose/40" aria-hidden />
-            )}
-            <span className="relative grid size-16 place-items-center rounded-full bg-gradient-to-br from-amber to-rose shadow-[0_0_30px_oklch(0.71_0.153_8/0.5)]">
-              {listening ? (
-                <span className="block size-5 rounded-sm bg-canvas" />
-              ) : (
-                <span className="block h-6 w-3 rounded-full bg-canvas" />
-              )}
-            </span>
-          </button>
-          <div>
-            <p className="font-display text-[15px] font-semibold text-cream">
-              {listening ? "Listening — tap to send" : "Tap to speak"}
-            </p>
-            <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted">
-              {sttMode === "streaming"
-                ? "Streaming transcript · Hinglish, Indian accent"
-                : sttMode === "recorded"
-                  ? "Record & transcribe · Hinglish, Indian accent"
-                  : "Voice unavailable — type your doubt"}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-6">
-          <div className="flex h-8 items-end gap-1" aria-hidden>
-            {[0, 0.1, 0.2, 0.3, 0.15, 0.25, 0.05].map((d, i) => (
+    <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-2">
+        <button
+          type="button"
+          onClick={listening ? onStop : onStart}
+          disabled={sttMode === "unavailable" || busy}
+          aria-pressed={listening}
+          aria-label={listening ? "Stop listening" : "Start listening"}
+          className="group relative grid size-14 place-items-center rounded-full border border-amber/30 bg-surface/60 backdrop-blur-xl transition-[transform,border-color,background-color] duration-300 ease-out hover:scale-105 hover:border-amber/60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber disabled:opacity-40 disabled:hover:scale-100"
+        >
+          {listening && (
+            <>
+              <span className="ring-pulse absolute inset-0 rounded-full border border-amber/60" aria-hidden />
               <span
-                key={i}
-                className={`w-1 rounded-full ${i % 2 ? "bg-rose/80" : "bg-amber/80"} ${
-                  listening || speaking ? "wave-bar" : ""
-                }`}
-                style={{ animationDelay: `${d}s`, height: listening || speaking ? undefined : "20%" }}
+                className="ring-pulse absolute inset-[-8px] rounded-full border border-rose/30"
+                style={{ animationDelay: "0.8s" }}
+                aria-hidden
               />
-            ))}
-          </div>
-          <div className="text-right">
-            <p
-              className={`font-mono text-[10px] uppercase tracking-widest ${
-                sttMode === "unavailable" ? "text-rose" : "text-mint"
-              }`}
-            >
-              {sttMode === "unavailable" ? "Mic offline" : "Connected"}
-            </p>
-            <p className="font-mono text-[10px] text-muted">
-              Last answer <span className="text-amber">{latencyMs ? `${latencyMs} ms` : "—"}</span>
-            </p>
-          </div>
-        </div>
+            </>
+          )}
+          <span className="absolute inset-0 rounded-full bg-amber/10 opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-100" aria-hidden />
+          {listening ? (
+            <Square className="relative size-4 fill-amber text-amber" aria-hidden />
+          ) : (
+            <Mic className="relative size-5 text-amber" aria-hidden />
+          )}
+        </button>
+        <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-muted">
+          {sttMode === "unavailable"
+            ? "Mic offline — type below"
+            : listening
+              ? "Tap to send"
+              : speaking
+                ? "Speaking — tap to interrupt"
+                : "Tap to speak"}
+        </p>
       </div>
 
-      <form onSubmit={submit} className="mt-4 flex gap-2">
+      <form onSubmit={submit} className="flex w-full items-center gap-2 rounded-full border border-cream/10 bg-surface/50 px-2 py-1.5 backdrop-blur-xl transition-colors focus-within:border-amber/40">
         <label htmlFor="typed-doubt" className="sr-only">
           Type your doubt
         </label>
@@ -105,17 +82,28 @@ export function MicControl({
           id="typed-doubt"
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
-          placeholder="…or type your doubt (voice-first is not voice-only)"
-          className="flex-1 rounded-xl border border-cream/10 bg-canvas/50 px-3.5 py-2.5 text-[13px] text-cream placeholder:text-muted focus-visible:outline-2 focus-visible:outline-amber"
+          placeholder="…or type your doubt"
+          className="flex-1 bg-transparent px-3 py-1.5 text-[13px] text-cream placeholder:text-muted focus:outline-none"
         />
         <button
           type="submit"
           disabled={busy || typed.trim().length === 0}
-          className="rounded-xl bg-amber px-4 py-2.5 text-[12px] font-semibold text-canvas disabled:opacity-50"
+          aria-label="Ask"
+          className="grid size-8 shrink-0 place-items-center rounded-full bg-amber text-canvas transition-transform duration-200 hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
         >
-          Ask
+          <ArrowUp className="size-4" aria-hidden />
         </button>
       </form>
+
+      <p className="font-mono text-[9px] uppercase tracking-[0.24em] text-muted">
+        {sttMode === "unavailable" ? (
+          <span className="text-rose">Voice unavailable</span>
+        ) : (
+          <span className="text-mint">Voice online</span>
+        )}
+        <span className="mx-2 text-line">·</span>
+        Last answer <span className="text-amber">{latencyMs ? `${latencyMs} ms` : "—"}</span>
+      </p>
     </div>
   );
 }
