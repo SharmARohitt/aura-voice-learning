@@ -159,15 +159,20 @@ export class BrowserSpeechTTS implements TTSProvider {
     }
   }
 
-  async speak(sentences: string[], onStateChange?: (speaking: boolean) => void): Promise<void> {
+  async speak(
+    sentences: string[],
+    onStateChange?: (speaking: boolean) => void,
+    onSentence?: (index: number) => void,
+  ): Promise<void> {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     this.cancel();
     onStateChange?.(true);
-    for (const sentence of sentences) {
+    for (let i = 0; i < sentences.length; i++) {
       await new Promise<void>((resolve) => {
-        const utterance = new SpeechSynthesisUtterance(sentence);
+        const utterance = new SpeechSynthesisUtterance(sentences[i]!);
         utterance.lang = "en-IN";
         utterance.rate = 0.98;
+        utterance.onstart = () => onSentence?.(i);
         utterance.onend = () => resolve();
         utterance.onerror = () => resolve();
         window.speechSynthesis.speak(utterance);
@@ -189,10 +194,14 @@ export class ResilientTTS implements TTSProvider {
     this.fallback.cancel();
   }
 
-  async speak(sentences: string[], onStateChange?: (speaking: boolean) => void): Promise<void> {
+  async speak(
+    sentences: string[],
+    onStateChange?: (speaking: boolean) => void,
+    onSentence?: (index: number) => void,
+  ): Promise<void> {
     if (!this.usingFallback) {
       try {
-        await this.primary.speak(sentences, onStateChange);
+        await this.primary.speak(sentences, onStateChange, onSentence);
         return;
       } catch (error) {
         if ((error as Error)?.name === "AbortError") return;
@@ -201,9 +210,10 @@ export class ResilientTTS implements TTSProvider {
         onStateChange?.(false);
       }
     }
-    await this.fallback.speak(sentences, onStateChange);
+    await this.fallback.speak(sentences, onStateChange, onSentence);
   }
 }
+
 
 export function splitIntoSentences(text: string): string[] {
   return text
