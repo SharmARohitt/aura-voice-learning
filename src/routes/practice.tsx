@@ -80,7 +80,7 @@ function PracticePage() {
       title="Practice arena"
       intro="Pick a topic or type your own. Every set is generated live at three levels: easy, similar and transfer."
     >
-      <div className="rounded-3xl border border-cream/10 bg-surface/40 p-5 backdrop-blur-xl">
+      <div className="editorial-surface rounded-lg p-5">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -139,7 +139,7 @@ function PracticePage() {
           />
         </div>
         <aside className="lg:col-span-4">
-          <div className="rounded-3xl border border-cream/10 bg-surface/40 p-5 backdrop-blur-xl">
+          <div className="editorial-surface rounded-lg p-5">
             <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.18em] text-muted">
               This session
             </h2>

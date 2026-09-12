@@ -55,7 +55,8 @@ function useAutoFollow(activeLine: string | null) {
       const comfortable = rect.top > 120 && rect.bottom < window.innerHeight - 160;
       if (comfortable) return;
       selfScroll.current = Date.now();
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+       el.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
     },
     [following],
   );
@@ -89,12 +90,12 @@ export function AnswerPanel({
   const hasVisual = Boolean(spec) || visualPending;
 
   return (
-    <div className="mt-6 space-y-3">
+    <div className="space-y-5">
       {showResume && (
         <button
           type="button"
           onClick={resume}
-          className="fixed bottom-24 left-1/2 z-30 -translate-x-1/2 rounded-full border border-amber/50 bg-surface/85 px-4 py-2 text-[11px] font-semibold text-amber backdrop-blur-xl shadow-[0_0_24px_-8px_oklch(0.83_0.135_74/0.8)]"
+          className="fixed bottom-8 left-1/2 z-30 -translate-x-1/2 rounded-full bg-forest px-4 py-2 text-[11px] font-semibold text-paper shadow-lg"
         >
           Follow AI ↓
         </button>
@@ -136,7 +137,7 @@ export function AnswerPanel({
         }
       >
         <div className="min-w-0 flex-1 space-y-3">
-          <section className="rise-in rounded-2xl border border-cream/10 bg-canvas/40 p-4">
+          <section className="rise-in border-b border-line pb-5">
             <p className="mb-1.5 font-mono text-[9px] uppercase tracking-widest text-amber">
               Short Answer
             </p>
@@ -151,7 +152,7 @@ export function AnswerPanel({
           {answer.sections.map((section, i) => (
             <section
               key={section.label + i}
-              className="rise-in rounded-2xl border border-cream/10 bg-canvas/40 p-4"
+              className="rise-in border-b border-line pb-5"
               style={{ animationDelay: `${80 * (i + 1)}ms` }}
             >
               <p className="mb-1.5 font-mono text-[9px] uppercase tracking-widest text-amber">
@@ -167,7 +168,7 @@ export function AnswerPanel({
           ))}
 
           {answer.formula && (
-            <section className="rise-in rounded-2xl border border-cream/10 bg-canvas/40 p-4">
+            <section className="rise-in border-b border-line pb-5">
               <p className="mb-1.5 font-mono text-[9px] uppercase tracking-widest text-rose">
                 Formula
               </p>
@@ -238,7 +239,7 @@ export function AnswerPanel({
         </div>
       )}
 
-      <section className="mt-5 rounded-2xl border border-cream/10 bg-canvas/40 p-4">
+      <section className="mt-8 border-t border-line pt-6">
         <p className="mb-3 font-display text-[13px] text-cream">Did this make sense?</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <button

@@ -90,7 +90,7 @@ function ConfusionGraphPage() {
 
       <div className="mt-5 grid gap-5 lg:grid-cols-12">
         <section className="lg:col-span-7">
-          <div className="rounded-3xl border border-cream/10 bg-surface/40 p-5 backdrop-blur-xl">
+          <div className="editorial-surface rounded-lg p-5">
             <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.18em] text-muted">
               Concept nodes
             </h2>
@@ -104,7 +104,7 @@ function ConfusionGraphPage() {
                     type="button"
                     onClick={() => setSelected(n.topic)}
                     aria-pressed={isActive}
-                    className={`group rounded-2xl border px-3.5 py-2.5 text-left transition-colors ${
+                    className={`group rounded-md border px-3.5 py-2.5 text-left transition-colors ${
                       isActive
                         ? "border-amber/50 bg-amber/12"
                         : "border-cream/12 bg-canvas/40 hover:border-amber/40"
@@ -116,7 +116,7 @@ function ConfusionGraphPage() {
                     </span>
                     <span className="mt-2 block h-1 w-full overflow-hidden rounded-full bg-canvas/70">
                       <span
-                        className="block h-full rounded-full bg-gradient-to-r from-amber to-rose"
+                        className="block h-full rounded-full bg-forest"
                         style={{ width: `${risk}%` }}
                       />
                     </span>
@@ -128,7 +128,7 @@ function ConfusionGraphPage() {
         </section>
 
         <section className="lg:col-span-5">
-          <div className="rounded-3xl border border-cream/10 bg-surface/40 p-5 backdrop-blur-xl">
+          <div className="editorial-surface rounded-lg p-5">
             {active ? (
               <>
                 <h2 className="font-display text-lg font-semibold">{active.topic}</h2>

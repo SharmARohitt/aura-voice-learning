@@ -8,7 +8,7 @@ interface Props {
 
 export function ContextPanel({ learner, answer, weakConcepts }: Props) {
   return (
-    <div className="rounded-3xl border border-cream/10 bg-surface/40 p-5 backdrop-blur-xl">
+    <div className="border-t border-line pt-6">
       <h2 className="mb-4 font-display text-[13px] font-semibold uppercase tracking-[0.18em] text-muted">
         Learning Context
       </h2>

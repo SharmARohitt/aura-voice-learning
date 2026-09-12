@@ -37,7 +37,7 @@ export function SpokenText({ text, activeLine, onActive, className }: Props) {
           ref={i === hit ? activeRef : undefined}
           className={
             i === hit
-              ? "rounded bg-amber/18 px-1 text-cream shadow-[0_0_18px_-6px_oklch(0.83_0.135_74/0.8)] transition-colors duration-300"
+              ? "rounded-sm bg-rose/35 px-1 text-ink shadow-[inset_3px_0_0_var(--forest)] transition-colors duration-300"
               : "transition-colors duration-300"
           }
         >

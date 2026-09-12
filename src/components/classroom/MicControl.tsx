@@ -36,7 +36,7 @@ export function MicControl({
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-4">
+    <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-5">
       <div className="flex flex-col items-center gap-2">
         <button
           type="button"
@@ -44,7 +44,7 @@ export function MicControl({
           disabled={sttMode === "unavailable" || busy}
           aria-pressed={listening}
           aria-label={listening ? "Stop listening" : "Start listening"}
-          className="group relative grid size-14 place-items-center rounded-full border border-amber/30 bg-surface/60 backdrop-blur-xl transition-[transform,border-color,background-color] duration-300 ease-out hover:scale-105 hover:border-amber/60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber disabled:opacity-40 disabled:hover:scale-100"
+          className="group relative grid size-16 place-items-center rounded-full bg-forest text-paper shadow-[0_10px_35px_-15px_var(--forest)] transition-[transform,opacity] duration-300 ease-out hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber disabled:opacity-40 disabled:hover:scale-100"
         >
           {listening && (
             <>
@@ -58,12 +58,12 @@ export function MicControl({
           )}
           <span className="absolute inset-0 rounded-full bg-amber/10 opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-100" aria-hidden />
           {listening ? (
-            <Square className="relative size-4 fill-amber text-amber" aria-hidden />
+            <Square className="relative size-4 fill-paper text-paper" aria-hidden />
           ) : (
-            <Mic className="relative size-5 text-amber" aria-hidden />
+            <Mic className="relative size-5 text-paper" aria-hidden />
           )}
         </button>
-        <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-muted">
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted">
           {sttMode === "unavailable"
             ? "Mic offline — type below"
             : listening
@@ -74,7 +74,7 @@ export function MicControl({
         </p>
       </div>
 
-      <form onSubmit={submit} className="flex w-full items-center gap-2 rounded-full border border-cream/10 bg-surface/50 px-2 py-1.5 backdrop-blur-xl transition-colors focus-within:border-amber/40">
+      <form onSubmit={submit} className="editorial-surface flex w-full items-center gap-2 rounded-lg p-2 transition-colors focus-within:border-amber/50">
         <label htmlFor="typed-doubt" className="sr-only">
           Type your doubt
         </label>
@@ -83,19 +83,19 @@ export function MicControl({
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           placeholder="…or type your doubt"
-          className="flex-1 bg-transparent px-3 py-1.5 text-[13px] text-cream placeholder:text-muted focus:outline-none"
+          className="flex-1 bg-transparent px-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none"
         />
         <button
           type="submit"
           disabled={busy || typed.trim().length === 0}
           aria-label="Ask"
-          className="grid size-8 shrink-0 place-items-center rounded-full bg-amber text-canvas transition-transform duration-200 hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+          className="grid size-9 shrink-0 place-items-center rounded-md bg-forest text-paper transition-opacity hover:opacity-85 disabled:opacity-40"
         >
           <ArrowUp className="size-4" aria-hidden />
         </button>
       </form>
 
-      <p className="font-mono text-[9px] uppercase tracking-[0.24em] text-muted">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
         {sttMode === "unavailable" ? (
           <span className="text-rose">Voice unavailable</span>
         ) : (

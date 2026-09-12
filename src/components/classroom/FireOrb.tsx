@@ -116,7 +116,7 @@ export function FireOrb({ mode, size = 300, className = "", label }: Props) {
     };
 
     const draw = (now: number) => {
-      raf = requestAnimationFrame(draw);
+      if (!reduced) raf = requestAnimationFrame(draw);
       const target = TUNING[modeRef.current];
       const k = reduced ? 1 : 0.045;
       cur.energy = lerp(cur.energy, target.energy, k);
@@ -267,7 +267,8 @@ export function FireOrb({ mode, size = 300, className = "", label }: Props) {
       ctx.globalCompositeOperation = "source-over";
     };
 
-    raf = requestAnimationFrame(draw);
+    if (reduced) draw(0);
+    else raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
   }, [size, reduced]);
 

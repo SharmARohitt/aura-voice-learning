@@ -30,7 +30,7 @@ export function TranscriptPanel({ question, partial, listening, answer }: Props)
   const concepts = answer?.concepts ?? [];
 
   return (
-    <div className="rounded-3xl border border-cream/10 bg-surface/40 p-5 backdrop-blur-xl">
+    <div className="editorial-surface rounded-lg p-5">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.18em] text-muted">
           Live Transcript

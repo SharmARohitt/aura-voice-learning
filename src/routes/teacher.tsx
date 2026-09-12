@@ -68,7 +68,7 @@ function TeacherPage() {
         ].map((s) => (
           <div
             key={s.label}
-            className="rounded-3xl border border-cream/10 bg-surface/40 p-5 backdrop-blur-xl"
+            className="editorial-surface rounded-lg p-5"
           >
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted">{s.label}</p>
             <p className="mt-2 font-display text-3xl font-bold text-amber">{s.value}</p>
@@ -78,7 +78,7 @@ function TeacherPage() {
 
       <div className="mt-5 grid gap-5 lg:grid-cols-12">
         <section className="lg:col-span-7">
-          <div className="rounded-3xl border border-cream/10 bg-surface/40 p-5 backdrop-blur-xl">
+          <div className="editorial-surface rounded-lg p-5">
             <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.18em] text-muted">
               Confusion hotspots
             </h2>
@@ -93,7 +93,7 @@ function TeacherPage() {
                   </div>
                   <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-canvas/70">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-amber to-rose"
+                      className="h-full rounded-full bg-forest"
                       style={{ width: `${Math.round((h.hits / maxHits) * 100)}%` }}
                     />
                   </div>
@@ -104,7 +104,7 @@ function TeacherPage() {
         </section>
 
         <section className="lg:col-span-5">
-          <div className="rounded-3xl border border-cream/10 bg-surface/40 p-5 backdrop-blur-xl">
+          <div className="editorial-surface rounded-lg p-5">
             <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.18em] text-muted">
               Escalated doubts
             </h2>
@@ -114,7 +114,7 @@ function TeacherPage() {
                 return (
                   <li
                     key={e.id}
-                    className={`rounded-2xl border p-3.5 transition-colors ${
+                    className={`rounded-md border p-3.5 transition-colors ${
                       done ? "border-mint/30 bg-mint/5" : "border-cream/12 bg-canvas/40"
                     }`}
                   >
