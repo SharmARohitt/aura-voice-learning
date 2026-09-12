@@ -147,3 +147,30 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ── AI mini diagrams ─────────────────────────────────────────────── */
+.diagram-node {
+  animation: riseIn 0.45s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.diagram-node-active {
+  box-shadow: 0 0 26px -6px oklch(0.83 0.135 74 / 0.75);
+}
+
+.diagram-canvas .react-flow__edge-path {
+  stroke-dasharray: 220;
+  animation: drawEdge 0.8s ease-out both;
+}
+
+@keyframes drawEdge {
+  from {
+    stroke-dashoffset: 220;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.diagram-canvas .react-flow__attribution {
+  display: none;
+}
