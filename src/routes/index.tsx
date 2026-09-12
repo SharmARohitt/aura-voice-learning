@@ -300,6 +300,9 @@ function Classroom({
             <AnswerPanel
               answer={answer}
               busy={busy}
+              activeLine={session.activeLine}
+              visual={session.visual}
+              visualPending={session.visualPending}
               onStrategy={session.explainDifferently}
               onFollowUp={session.askTyped}
               onEscalate={session.escalate}

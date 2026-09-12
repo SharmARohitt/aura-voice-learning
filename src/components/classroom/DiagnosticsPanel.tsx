@@ -42,7 +42,9 @@ export function DiagnosticsPanel({ answer, events, activeStage }: Props) {
         />
         <Stat label="Rerank" value={answer ? `${answer.latency.rerank_ms}ms` : "—"} />
         <Stat label="Reasoning" value={answer ? `${answer.latency.llm_ms}ms` : "—"} />
+        <Stat label="First text" value={answer?.latency.llm_ttft_ms ? `${answer.latency.llm_ttft_ms}ms` : "—"} />
         <Stat label="First audio" value={answer?.latency.tts_ttfa_ms ? `${answer.latency.tts_ttfa_ms}ms` : "—"} />
+        <Stat label="Diagram (bg)" value={answer?.latency.diagram_ms ? `${answer.latency.diagram_ms}ms` : "—"} />
         <Stat label="Practice (bg)" value={answer?.latency.practice_ms ? `${answer.latency.practice_ms}ms` : "—"} />
         <Stat label="End to end" value={answer ? `${answer.latency.total_ms}ms` : "—"} />
       </dl>

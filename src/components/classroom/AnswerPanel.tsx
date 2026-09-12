@@ -1,4 +1,8 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SourceCard } from "@/components/classroom/SourceCard";
+import { SpokenText } from "@/components/classroom/SpokenText";
+import { DiagramPanel } from "@/components/classroom/DiagramPanel";
+import { nodesMentionedIn, type DiagramSpec } from "@/lib/diagram/spec";
 import type { TeachingStrategy, TutorAnswer } from "@/lib/types";
 
 const STRATEGIES: { key: TeachingStrategy; label: string }[] = [
@@ -13,24 +17,89 @@ const STRATEGIES: { key: TeachingStrategy; label: string }[] = [
 interface Props {
   answer: TutorAnswer;
   busy: boolean;
+  /** Sentence the tutor is speaking right now, if any. */
+  activeLine?: string | null;
+  visual?: DiagramSpec | null;
+  visualPending?: boolean;
   onStrategy: (strategy: TeachingStrategy) => void;
   onFollowUp: (text: string) => void;
   onQuizMe: () => void;
   onEscalate: () => void;
 }
 
+/**
+ * Keeps the spoken sentence in the reading zone, but never fights the student:
+ * any manual scroll pauses following until "Follow AI" is pressed.
+ */
+function useAutoFollow(activeLine: string | null) {
+  const [following, setFollowing] = useState(true);
+  const selfScroll = useRef(0);
+
+  useEffect(() => {
+    const pause = () => {
+      if (Date.now() - selfScroll.current < 700) return; // our own smooth scroll
+      setFollowing(false);
+    };
+    window.addEventListener("wheel", pause, { passive: true });
+    window.addEventListener("touchmove", pause, { passive: true });
+    return () => {
+      window.removeEventListener("wheel", pause);
+      window.removeEventListener("touchmove", pause);
+    };
+  }, []);
+
+  const onActive = useCallback(
+    (el: HTMLElement | null) => {
+      if (!el || !following) return;
+      const rect = el.getBoundingClientRect();
+      const comfortable = rect.top > 120 && rect.bottom < window.innerHeight - 160;
+      if (comfortable) return;
+      selfScroll.current = Date.now();
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    },
+    [following],
+  );
+
+  return {
+    following,
+    onActive,
+    resume: () => setFollowing(true),
+    showResume: !following && Boolean(activeLine),
+  };
+}
+
 export function AnswerPanel({
   answer,
   busy,
+  activeLine = null,
+  visual = null,
+  visualPending = false,
   onStrategy,
   onFollowUp,
   onQuizMe,
   onEscalate,
 }: Props) {
   const top = answer.evidence[0];
+  const { onActive, resume, showResume } = useAutoFollow(activeLine);
+  const spec = visual ?? answer.visual ?? null;
+  const activeNodeIds = useMemo(
+    () => (spec && activeLine ? nodesMentionedIn(activeLine, spec.nodes) : []),
+    [spec, activeLine],
+  );
+  const hasVisual = Boolean(spec) || visualPending;
 
   return (
     <div className="mt-6 space-y-3">
+      {showResume && (
+        <button
+          type="button"
+          onClick={resume}
+          className="fixed bottom-24 left-1/2 z-30 -translate-x-1/2 rounded-full border border-amber/50 bg-surface/85 px-4 py-2 text-[11px] font-semibold text-amber backdrop-blur-xl shadow-[0_0_24px_-8px_oklch(0.83_0.135_74/0.8)]"
+        >
+          Follow AI ↓
+        </button>
+      )}
+
       {!answer.grounded && (
         <section className="rise-in rounded-2xl border border-rose/25 bg-rose/8 p-4">
           <p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-rose">
@@ -59,34 +128,60 @@ export function AnswerPanel({
           </div>
         </section>
       )}
-      <section className="rise-in rounded-2xl border border-cream/10 bg-canvas/40 p-4">
-        <p className="mb-1.5 font-mono text-[9px] uppercase tracking-widest text-amber">
-          Short Answer
-        </p>
-        <p className="text-[13px] leading-relaxed text-cream/90">{answer.short_answer}</p>
-      </section>
 
-      {answer.sections.map((section, i) => (
-        <section
-          key={section.label + i}
-          className="rise-in rounded-2xl border border-cream/10 bg-canvas/40 p-4"
-          style={{ animationDelay: `${80 * (i + 1)}ms` }}
-        >
-          <p className="mb-1.5 font-mono text-[9px] uppercase tracking-widest text-amber">
-            {section.label}
-          </p>
-          <p className="whitespace-pre-line text-[13px] leading-relaxed text-cream/90">
-            {section.body}
-          </p>
-        </section>
-      ))}
+      {/* Explanation left, visual sidekick right (stacks on small screens). */}
+      <div
+        className={
+          hasVisual ? "flex flex-col gap-3 lg:flex-row lg:items-start" : "flex flex-col gap-3"
+        }
+      >
+        <div className="min-w-0 flex-1 space-y-3">
+          <section className="rise-in rounded-2xl border border-cream/10 bg-canvas/40 p-4">
+            <p className="mb-1.5 font-mono text-[9px] uppercase tracking-widest text-amber">
+              Short Answer
+            </p>
+            <SpokenText
+              text={answer.short_answer}
+              activeLine={activeLine}
+              onActive={onActive}
+              className="text-[13px] leading-relaxed text-cream/90"
+            />
+          </section>
 
-      {answer.formula && (
-        <section className="rise-in rounded-2xl border border-cream/10 bg-canvas/40 p-4">
-          <p className="mb-1.5 font-mono text-[9px] uppercase tracking-widest text-rose">Formula</p>
-          <p className="font-mono text-[14px] text-cream">{answer.formula}</p>
-        </section>
-      )}
+          {answer.sections.map((section, i) => (
+            <section
+              key={section.label + i}
+              className="rise-in rounded-2xl border border-cream/10 bg-canvas/40 p-4"
+              style={{ animationDelay: `${80 * (i + 1)}ms` }}
+            >
+              <p className="mb-1.5 font-mono text-[9px] uppercase tracking-widest text-amber">
+                {section.label}
+              </p>
+              <SpokenText
+                text={section.body}
+                activeLine={activeLine}
+                onActive={onActive}
+                className="whitespace-pre-line text-[13px] leading-relaxed text-cream/90"
+              />
+            </section>
+          ))}
+
+          {answer.formula && (
+            <section className="rise-in rounded-2xl border border-cream/10 bg-canvas/40 p-4">
+              <p className="mb-1.5 font-mono text-[9px] uppercase tracking-widest text-rose">
+                Formula
+              </p>
+              <p className="font-mono text-[14px] text-cream">{answer.formula}</p>
+            </section>
+          )}
+        </div>
+
+        {hasVisual && (
+          <div className="w-full shrink-0 lg:w-[320px]">
+            <DiagramPanel spec={spec} pending={visualPending} activeNodeIds={activeNodeIds} />
+          </div>
+        )}
+      </div>
 
       {top && <SourceCard evidence={top} busy={busy} onFollowUp={onFollowUp} />}
 

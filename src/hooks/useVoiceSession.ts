@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { askTutor, generatePractice, quickAnswer } from "@/lib/tutor.functions";
+import { generateDiagram } from "@/lib/diagram.functions";
+import { shouldDrawDiagram, type DiagramSpec } from "@/lib/diagram/spec";
 import { courseIdFor, detectLanguageRequest } from "@/lib/learner-context";
 import { createSTTProvider, type STTProvider } from "@/lib/voice/stt";
 import { ResilientTTS, splitIntoSentences } from "@/lib/voice/tts";
@@ -40,12 +42,17 @@ export function useVoiceSession(context: LearnerContext) {
   const ask = useServerFn(askTutor);
   const makePractice = useServerFn(generatePractice);
   const quick = useServerFn(quickAnswer);
+  const makeDiagram = useServerFn(generateDiagram);
   const [state, setState] = useState<VoiceState>("IDLE");
   const [partial, setPartial] = useState("");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<TutorAnswer | null>(null);
   /** Fast first response shown before the full structured answer lands. */
   const [preview, setPreview] = useState("");
+  /** Currently spoken sentence — drives text highlight + auto-follow. */
+  const [activeLine, setActiveLine] = useState<string | null>(null);
+  const [visual, setVisual] = useState<DiagramSpec | null>(null);
+  const [visualPending, setVisualPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [micDenied, setMicDenied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -88,6 +95,7 @@ export function useVoiceSession(context: LearnerContext) {
   const stopSpeaking = useCallback(() => {
     ttsRef.current?.cancel();
     setSpeaking(false);
+    setActiveLine(null);
   }, []);
 
   const runPipeline = useCallback(
@@ -122,9 +130,14 @@ export function useVoiceSession(context: LearnerContext) {
       try {
         setState("RETRIEVING");
         setPreview("");
+        setActiveLine(null);
+        setVisual(null);
+        setVisualPending(false);
 
         // Fast path: a capped two-sentence answer lands ~1s ahead of the full
         // structured explanation and starts speaking immediately.
+        const runStart = performance.now();
+        let firstTextMs = 0;
         let previewSpeech: Promise<void> = Promise.resolve();
         let previewSpoken = false;
         let fullArrived = false;
@@ -141,12 +154,20 @@ export function useVoiceSession(context: LearnerContext) {
           .then((r) => {
             if (runId !== runIdRef.current || fullArrived || !r.text) return;
             previewSpoken = true;
+            firstTextMs = Math.round(performance.now() - runStart);
             setPreview(r.text);
             setState("RESPONDING");
+            const previewLines = splitIntoSentences(r.text).filter(Boolean);
             previewSpeech = (
-              ttsRef.current?.speak(splitIntoSentences(r.text).filter(Boolean), (isSpeaking) => {
-                if (runId === runIdRef.current) setSpeaking(isSpeaking);
-              }) ?? Promise.resolve()
+              ttsRef.current?.speak(
+                previewLines,
+                (isSpeaking) => {
+                  if (runId === runIdRef.current) setSpeaking(isSpeaking);
+                },
+                (index) => {
+                  if (runId === runIdRef.current) setActiveLine(previewLines[index] ?? null);
+                },
+              ) ?? Promise.resolve()
             ).catch(() => undefined);
           })
           .catch(() => undefined);
@@ -171,7 +192,13 @@ export function useVoiceSession(context: LearnerContext) {
         fullArrived = true;
         if (runId !== runIdRef.current) return; // superseded by a newer question
         setState("REASONING");
-        setAnswer(result);
+        setAnswer({
+          ...result,
+          latency: {
+            ...result.latency,
+            llm_ttft_ms: firstTextMs || Math.round(performance.now() - runStart),
+          },
+        });
         convRef.current = { subject: result.subject, chapter: result.chapter };
 
         // Practice is generated in the background so it never delays the answer.
@@ -200,6 +227,44 @@ export function useVoiceSession(context: LearnerContext) {
             );
           })
           .catch(() => undefined);
+
+        // Diagram is a pure enhancement: fully off the critical path, and a
+        // failure leaves the answer and voice untouched.
+        if (shouldDrawDiagram(text, result.concepts)) {
+          setVisualPending(true);
+          const diagramStart = performance.now();
+          void makeDiagram({
+            data: {
+              question: text,
+              subject: result.subject,
+              chapter: result.chapter,
+              concepts: result.concepts.slice(0, 8),
+              short_answer: result.short_answer.slice(0, 600),
+              evidence: result.evidence
+                .slice(0, 2)
+                .map((e) => e.chunk.text)
+                .join("\n")
+                .slice(0, 1800),
+              mode: activeMode,
+              language: effectiveLanguage,
+              grounded: result.grounded,
+            },
+          })
+            .then((spec) => {
+              if (runId !== runIdRef.current) return;
+              setVisual(spec ?? null);
+              const ms = Math.round(performance.now() - diagramStart);
+              setAnswer((prev) =>
+                prev
+                  ? { ...prev, visual: spec ?? null, latency: { ...prev.latency, diagram_ms: ms } }
+                  : prev,
+              );
+            })
+            .catch(() => setVisual(null))
+            .finally(() => {
+              if (runId === runIdRef.current) setVisualPending(false);
+            });
+        }
 
         logEvent(
           result.grounded
@@ -244,17 +309,24 @@ export function useVoiceSession(context: LearnerContext) {
         void previewSpeech
           .then(() => {
             if (runId !== runIdRef.current || spoken.length === 0) return;
-            return ttsRef.current?.speak(spoken, (isSpeaking) => {
-              if (runId !== runIdRef.current) return;
-              setSpeaking(isSpeaking);
-              if (isSpeaking && !firstAudio) {
-                firstAudio = true;
-                const ttfa = Math.round(performance.now() - speakStart);
-                setAnswer((prev) =>
-                  prev ? { ...prev, latency: { ...prev.latency, tts_ttfa_ms: ttfa } } : prev,
-                );
-              }
-            });
+            return ttsRef.current?.speak(
+              spoken,
+              (isSpeaking) => {
+                if (runId !== runIdRef.current) return;
+                setSpeaking(isSpeaking);
+                if (!isSpeaking) setActiveLine(null);
+                if (isSpeaking && !firstAudio) {
+                  firstAudio = true;
+                  const ttfa = Math.round(performance.now() - speakStart);
+                  setAnswer((prev) =>
+                    prev ? { ...prev, latency: { ...prev.latency, tts_ttfa_ms: ttfa } } : prev,
+                  );
+                }
+              },
+              (index) => {
+                if (runId === runIdRef.current) setActiveLine(spoken[index] ?? null);
+              },
+            );
           })
           .catch(() => setSpeaking(false))
           .finally(() => {
@@ -274,7 +346,7 @@ export function useVoiceSession(context: LearnerContext) {
         setState("ERROR");
       }
     },
-    [ask, context, logEvent, makePractice, quick, weakConcepts],
+    [ask, context, logEvent, makeDiagram, makePractice, quick, weakConcepts],
   );
 
   const startListening = useCallback(async () => {
@@ -379,6 +451,9 @@ export function useVoiceSession(context: LearnerContext) {
       question,
       answer,
       preview,
+      activeLine,
+      visual,
+      visualPending,
       error,
       micDenied,
       events,
@@ -405,6 +480,9 @@ export function useVoiceSession(context: LearnerContext) {
       question,
       answer,
       preview,
+      activeLine,
+      visual,
+      visualPending,
       error,
       micDenied,
       events,
