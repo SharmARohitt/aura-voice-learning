@@ -2,8 +2,6 @@
 @source "../src";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
 /* Voice Bingo / Aura — warm editorial learning canvas. */
 
 @theme inline {

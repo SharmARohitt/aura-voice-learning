@@ -86,11 +86,11 @@ export default function DiagramCanvas({ spec, activeNodeIds, height }: Props) {
           animated: active,
           markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
           style: {
-            stroke: active ? "oklch(0.83 0.135 74)" : "oklch(0.83 0.135 74 / 0.42)",
+            stroke: active ? "#214e34" : "#979b8d",
             strokeWidth: active ? 1.8 : 1.2,
           },
-          labelStyle: { fill: "oklch(0.92 0.02 80)", fontSize: 9 },
-          labelBgStyle: { fill: "oklch(0.18 0.02 60)", fillOpacity: 0.85 },
+          labelStyle: { fill: "#214e34", fontSize: 9 },
+          labelBgStyle: { fill: "#faf8f4", fillOpacity: 0.9 },
           labelBgPadding: [4, 2] as [number, number],
           labelBgBorderRadius: 4,
         } satisfies Edge;
@@ -114,7 +114,7 @@ export default function DiagramCanvas({ spec, activeNodeIds, height }: Props) {
         zoomOnScroll={false}
         preventScrolling={false}
       >
-        <Background variant={BackgroundVariant.Dots} gap={18} size={1} color="rgba(255,255,255,.07)" />
+        <Background variant={BackgroundVariant.Dots} gap={18} size={1} color="#c1bcac" />
       </ReactFlow>
     </div>
   );
