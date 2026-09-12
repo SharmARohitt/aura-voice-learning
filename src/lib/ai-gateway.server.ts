@@ -58,13 +58,11 @@ export async function chatJson<T>(messages: ChatMessage[], signal?: AbortSignal)
     choices?: { message?: { content?: string } }[];
   };
   const content = data.choices?.[0]?.message?.content ?? "";
-  const cleaned = content.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
-  try {
-    return JSON.parse(cleaned) as T;
-  } catch {
-    console.error("[ai-gateway] unparsable model output", cleaned.slice(0, 400));
-    throw new GatewayError(502, "The tutor returned an unreadable response.", true);
-  }
+  const parsed = parseLooseJson<T>(content);
+  if (parsed !== null) return parsed;
+  console.error("[ai-gateway] unparsable model output", content.slice(0, 400));
+  throw new GatewayError(502, "The tutor returned an unreadable response.", true);
+
 }
 
 /**
