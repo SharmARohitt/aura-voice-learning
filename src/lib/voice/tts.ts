@@ -6,7 +6,11 @@
  */
 export interface TTSProvider {
   readonly id: string;
-  speak(sentences: string[], onStateChange?: (speaking: boolean) => void): Promise<void>;
+  speak(
+    sentences: string[],
+    onStateChange?: (speaking: boolean) => void,
+    onSentence?: (index: number) => void,
+  ): Promise<void>;
   cancel(): void;
 }
 
@@ -17,6 +21,7 @@ export class GatewayStreamingTTS implements TTSProvider {
   private controller: AbortController | null = null;
   private ctx: AudioContext | null = null;
   private sources: AudioBufferSourceNode[] = [];
+  private timers: ReturnType<typeof setTimeout>[] = [];
   private playhead = 0;
 
   cancel(): void {
@@ -30,12 +35,18 @@ export class GatewayStreamingTTS implements TTSProvider {
       }
     });
     this.sources = [];
+    this.timers.forEach((t) => clearTimeout(t));
+    this.timers = [];
     this.playhead = 0;
     void this.ctx?.close().catch(() => {});
     this.ctx = null;
   }
 
-  async speak(sentences: string[], onStateChange?: (speaking: boolean) => void): Promise<void> {
+  async speak(
+    sentences: string[],
+    onStateChange?: (speaking: boolean) => void,
+    onSentence?: (index: number) => void,
+  ): Promise<void> {
     this.cancel();
     const controller = new AbortController();
     this.controller = controller;
@@ -46,9 +57,21 @@ export class GatewayStreamingTTS implements TTSProvider {
     onStateChange?.(true);
 
     try {
-      for (const sentence of sentences) {
+      for (let i = 0; i < sentences.length; i++) {
         if (controller.signal.aborted) break;
-        await this.streamSentence(sentence, ctx, controller.signal);
+        // Audio for this sentence starts where the queue currently ends —
+        // fire the highlight callback at that moment, not at fetch time.
+        if (onSentence) {
+          const startAt =
+            this.playhead === 0 ? ctx.currentTime + 0.06 : Math.max(this.playhead, ctx.currentTime);
+          const delay = Math.max(0, (startAt - ctx.currentTime) * 1000);
+          this.timers.push(
+            setTimeout(() => {
+              if (!controller.signal.aborted) onSentence(i);
+            }, delay),
+          );
+        }
+        await this.streamSentence(sentences[i]!, ctx, controller.signal);
       }
       const waitMs = Math.max(0, (this.playhead - ctx.currentTime) * 1000);
       await new Promise((r) => setTimeout(r, waitMs));
@@ -59,6 +82,7 @@ export class GatewayStreamingTTS implements TTSProvider {
       }
     }
   }
+
 
   private async streamSentence(text: string, ctx: AudioContext, signal: AbortSignal) {
     const res = await fetch("/api/tts", {
