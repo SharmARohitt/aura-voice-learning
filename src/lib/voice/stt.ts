@@ -51,7 +51,7 @@ export interface STTProvider {
 /** Audio kept from before speech was detected, so openings are never cut. */
 const PREROLL_MS = 500;
 /** Silence that must follow speech before we call the sentence finished. */
-const END_GRACE_MS = 1250;
+const END_GRACE_MS = 1600;
 /** Short pauses ("entropy... actually") must never end the utterance. */
 const MIN_SPEECH_MS = 400;
 /** Give a slow starter time before giving up. */
@@ -210,7 +210,10 @@ export class VadCaptureSTT implements STTProvider {
     this.totalSamples += frame.length;
 
     // Adaptive noise floor: tracks the room while nobody is speaking.
-    const threshold = Math.max(MIN_THRESHOLD, this.noiseFloor * 3.2);
+    const startThreshold = Math.max(MIN_THRESHOLD, this.noiseFloor * 3.2);
+    // Hysteresis: once talking, quieter trailing syllables still count as
+    // speech, so a soft word ending never looks like the end of the sentence.
+    const threshold = this.speaking ? startThreshold * 0.55 : startThreshold;
     const voiced = level > threshold;
     if (!voiced) this.noiseFloor = this.noiseFloor * 0.95 + level * 0.05;
 
