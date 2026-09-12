@@ -68,6 +68,8 @@ export function useVoiceSession(context: LearnerContext) {
   /** Compact conversation context — follow-ups inherit subject + chapter. */
   const convRef = useRef<{ subject: string; chapter: string }>({ subject: "", chapter: "" });
   const runIdRef = useRef(0);
+  /** Latency of the last finalised transcription, folded into answer metrics. */
+  const sttMsRef = useRef(0);
   const modeRef = useRef(mode);
   const langRef = useRef(language);
   modeRef.current = mode;
@@ -197,6 +199,7 @@ export function useVoiceSession(context: LearnerContext) {
           latency: {
             ...result.latency,
             llm_ttft_ms: firstTextMs || Math.round(performance.now() - runStart),
+            ...(sttMsRef.current ? { stt_ms: sttMsRef.current } : {}),
           },
         });
         convRef.current = { subject: result.subject, chapter: result.chapter };
@@ -365,8 +368,14 @@ export function useVoiceSession(context: LearnerContext) {
           setPartial(text);
           setState("TRANSCRIBING");
         },
-        onFinal: (text) => {
+        onFinal: (text, meta) => {
           setPartial("");
+          sttMsRef.current = meta?.sttMs ?? 0;
+          if (meta) {
+            console.info(
+              `[stt] ${meta.provider} · ${meta.audioMs}ms audio · ${meta.sttMs}ms transcribe · peak ${meta.peak.toFixed(2)} · "${text}"`,
+            );
+          }
           void runPipeline(text);
         },
         onError: (message) => {
