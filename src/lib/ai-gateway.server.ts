@@ -148,11 +148,28 @@ export async function chatText(
   return (data.choices?.[0]?.message?.content ?? "").trim();
 }
 
-export async function transcribeAudio(file: Blob, filename: string): Promise<string> {
+const AUDIO_EXT: Record<string, string> = {
+  "audio/wav": "wav",
+  "audio/x-wav": "wav",
+  "audio/wave": "wav",
+  "audio/webm": "webm",
+  "audio/mp4": "mp4",
+  "audio/mpeg": "mp3",
+  "audio/ogg": "ogg",
+};
+
+/**
+ * Transcribes a complete recording. Language is auto-detected so Hindi,
+ * English and Hinglish code-switching all transcribe as spoken, without
+ * being forced into one language.
+ */
+export async function transcribeAudio(file: Blob, mimeType?: string): Promise<string> {
+  const type = (mimeType ?? file.type ?? "audio/wav").split(";")[0]!;
+  const ext = AUDIO_EXT[type] ?? "wav";
+
   const form = new FormData();
-  form.append("file", file, filename);
+  form.append("file", file, `speech.${ext}`);
   form.append("model", "google/gemini-3.5-transcribe");
-  form.append("language", "hi");
 
   const res = await fetch(`${GATEWAY_URL}/audio/transcriptions`, {
     method: "POST",
@@ -169,7 +186,7 @@ export async function transcribeAudio(file: Blob, filename: string): Promise<str
     );
   }
   const data = (await res.json()) as { text?: string };
-  return data.text ?? "";
+  return (data.text ?? "").trim();
 }
 
 export function speechRequest(text: string, signal?: AbortSignal): Promise<Response> {
