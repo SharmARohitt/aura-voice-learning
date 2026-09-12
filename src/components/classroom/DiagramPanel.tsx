@@ -17,7 +17,7 @@ export function DiagramPanel({ spec, pending, activeNodeIds }: Props) {
   if (!spec) {
     if (!pending) return null;
     return (
-      <aside className="rise-in rounded-2xl border border-cream/10 bg-canvas/40 p-4 backdrop-blur-xl">
+      <aside data-diagram="pending" className="rise-in rounded-2xl border border-cream/10 bg-canvas/40 p-4 backdrop-blur-xl">
         <p className="font-mono text-[9px] uppercase tracking-widest text-amber">Visual</p>
         <div className="mt-3 space-y-2" aria-hidden>
           <div className="h-8 animate-pulse rounded-lg bg-cream/5" />
@@ -33,6 +33,7 @@ export function DiagramPanel({ spec, pending, activeNodeIds }: Props) {
 
   return (
     <aside
+      data-diagram="ready"
       className="rise-in overflow-hidden rounded-2xl border border-amber/20 bg-canvas/50 backdrop-blur-xl shadow-[0_0_34px_-18px_oklch(0.83_0.135_74/0.7)]"
       aria-label={`Diagram: ${spec.title}`}
     >
