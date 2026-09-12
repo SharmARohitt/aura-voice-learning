@@ -28,7 +28,56 @@ export interface ChatMessage {
   content: string;
 }
 
+/**
+ * Models occasionally wrap JSON in code fences, add prose around it, or get
+ * cut off mid-object. Recover instead of failing the whole answer.
+ */
+export function parseLooseJson<T>(raw: string): T | null {
+  let text = raw.trim();
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence?.[1]) text = fence[1].trim();
+  else text = text.replace(/^```(?:json)?/i, "").replace(/```/g, "").trim();
+
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+  text = text.slice(start);
+
+  const attempts = [text, repairTruncatedJson(text)];
+  for (const candidate of attempts) {
+    try {
+      return JSON.parse(candidate) as T;
+    } catch {
+      /* try next */
+    }
+  }
+  return null;
+}
+
+/** Close dangling strings/brackets so a truncated object still parses. */
+function repairTruncatedJson(text: string): string {
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+  for (const ch of text) {
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "{" || ch === "[") stack.push(ch === "{" ? "}" : "]");
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+  let out = text;
+  if (inString) out += '"';
+  out = out.replace(/,\s*$/, "");
+  while (stack.length) out += stack.pop();
+  return out;
+}
+
 export async function chatJson<T>(messages: ChatMessage[], signal?: AbortSignal): Promise<T> {
+
   const res = await fetch(`${GATEWAY_URL}/chat/completions`, {
     method: "POST",
     headers: {
