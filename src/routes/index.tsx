@@ -156,16 +156,16 @@ function Classroom({
       <TopNav connected={session.sttMode !== "unavailable"} />
 
       <main className="mx-auto grid max-w-[1500px] lg:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="border-b border-line bg-sage/10 px-5 py-6 lg:min-h-[calc(100vh-4rem)] lg:border-b-0 lg:border-r lg:px-6 lg:py-8">
+        <aside className="border-b border-line bg-sage/10 px-5 py-4 lg:min-h-[calc(100vh-4rem)] lg:border-b-0 lg:border-r lg:px-6 lg:py-8">
           <p className="eyebrow">Learning mode</p>
-          <div className="mt-3 grid grid-cols-2 gap-1.5 lg:grid-cols-1">
+          <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1 lg:grid lg:grid-cols-1 lg:overflow-visible">
             {MODES.map((m) => (
               <button
                 key={m.key}
                 type="button"
                 onClick={() => session.changeMode(m.key)}
                 aria-pressed={session.mode === m.key}
-                className={`rounded-md border px-3 py-2 text-left text-xs font-medium transition-colors ${
+                className={`shrink-0 rounded-md border px-3 py-2 text-left text-xs font-medium transition-colors ${
                   session.mode === m.key
                     ? "border-forest/30 bg-forest text-paper"
                     : "border-transparent bg-surface/55 text-muted hover:border-sage hover:text-ink"
@@ -175,7 +175,7 @@ function Classroom({
               </button>
             ))}
           </div>
-          <p className="eyebrow mt-7">Tutor language</p>
+          <p className="eyebrow mt-4 lg:mt-7">Tutor language</p>
           <div className="mt-3 flex flex-wrap gap-1.5">
             {LANGUAGES.map((l) => (
               <button
@@ -208,7 +208,7 @@ function Classroom({
         </aside>
 
         <div className="min-w-0 px-5 pb-16 pt-8 sm:px-8 lg:px-12">
-        <section className="flex min-h-[660px] flex-col items-center justify-center border-b border-line pb-12">
+        <section className="flex min-h-[520px] flex-col items-center justify-center border-b border-line pb-8 lg:min-h-[660px] lg:pb-12">
           <FireOrb mode={orbMode} size={orbSize} label={`Voice Bingo AI core — ${caption}`} />
 
           <p
@@ -354,7 +354,7 @@ function useOrbSize() {
     const measure = () => {
       const w = window.innerWidth;
       const h = window.innerHeight;
-      const byWidth = w < 480 ? w * 0.62 : w < 1024 ? 280 : 340;
+      const byWidth = w < 480 ? w * 0.52 : w < 1024 ? 260 : 340;
       setSize(Math.round(Math.max(180, Math.min(byWidth, h * 0.38))));
     };
     measure();

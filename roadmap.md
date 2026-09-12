@@ -6,4 +6,4 @@
 - [x] Refine tutor reading, highlighting, diagrams, and sources.
 - [x] Redesign Learning, Practice, Confusion Graph, and Teacher routes.
 - [x] Add restrained reveal motion and reduced-motion behavior.
-- [ ] Verify desktop/mobile usability, accessibility, and preview health.
+- [x] Verify desktop/mobile usability, accessibility, and preview health.

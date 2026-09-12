@@ -34,7 +34,7 @@ export function WelcomeHub({ context, topics, onAction, onEditProfile }: Props) 
         Hinglish. Everything below is live — no dead buttons.
       </p>
 
-      <div className="mt-7 grid gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-7 grid gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2 lg:grid-cols-5">
         {ACTIONS.map((a) => (
           <button
             key={a.key}
