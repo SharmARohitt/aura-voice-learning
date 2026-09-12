@@ -1,3 +1,5 @@
+import type { DiagramSpec } from "@/lib/diagram/spec";
+
 // Shared domain contracts for the Voice Bingo / Aura-PW learning pipeline.
 
 export type VoiceState =
@@ -187,6 +189,8 @@ export interface TutorAnswer {
   confidence: number;
   escalation_required: boolean;
   fallback_reason: string | null;
+  /** Optional AI-generated mini diagram (structured, never markup). */
+  visual?: DiagramSpec | null;
   latency: PipelineLatency;
 }
 
@@ -204,6 +208,12 @@ export interface PipelineLatency {
   practice_ms?: number;
   /** Time to first spoken audio, measured client-side. */
   tts_ttfa_ms?: number;
+  /** Speech-to-text finalisation, measured client-side. */
+  stt_ms?: number;
+  /** Time to the first useful text shown to the student. */
+  llm_ttft_ms?: number;
+  /** Background diagram generation, measured client-side. */
+  diagram_ms?: number;
 }
 
 export interface LearnerProfile {
