@@ -45,7 +45,7 @@ function LearningPage() {
       title="Learning library"
       intro="Every approved lecture chunk the tutor can ground an answer in — searchable by chapter, topic and concept."
     >
-      <div className="flex flex-col gap-3 rounded-2xl border border-cream/10 bg-surface/40 p-3 backdrop-blur-xl sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 editorial-surface rounded-lg p-3 sm:flex-row sm:items-center">
         <div className="flex flex-wrap gap-1.5">
           {["All", ...subjects].map((s) => (
             <button
@@ -80,7 +80,7 @@ function LearningPage() {
         {chunks.map((c) => (
           <article
             key={c.chunk_id}
-            className="flex flex-col rounded-3xl border border-cream/10 bg-surface/40 p-5 backdrop-blur-xl transition-colors hover:border-amber/35"
+            className="flex flex-col editorial-surface rounded-lg p-5 transition-colors hover:border-amber/35"
           >
             <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-muted">
               <span>

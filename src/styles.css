@@ -114,7 +114,7 @@
 }
 
 @utility aura-accent {
-  background: linear-gradient(115deg, #5369ce 0%, #655ed0 20%, #8458cf 37%, #c7639a 56%, #e57269 73%, #ee7b45 87%, #f3ae59 100%);
+  background: linear-gradient(115deg, var(--forest), var(--rose));
 }
 
 @utility reveal-section {
