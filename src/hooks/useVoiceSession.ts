@@ -136,6 +136,8 @@ export function useVoiceSession(context: LearnerContext) {
 
         // Fast path: a capped two-sentence answer lands ~1s ahead of the full
         // structured explanation and starts speaking immediately.
+        const runStart = performance.now();
+        let firstTextMs = 0;
         let previewSpeech: Promise<void> = Promise.resolve();
         let previewSpoken = false;
         let fullArrived = false;
@@ -152,6 +154,7 @@ export function useVoiceSession(context: LearnerContext) {
           .then((r) => {
             if (runId !== runIdRef.current || fullArrived || !r.text) return;
             previewSpoken = true;
+            firstTextMs = Math.round(performance.now() - runStart);
             setPreview(r.text);
             setState("RESPONDING");
             const previewLines = splitIntoSentences(r.text).filter(Boolean);
@@ -189,7 +192,13 @@ export function useVoiceSession(context: LearnerContext) {
         fullArrived = true;
         if (runId !== runIdRef.current) return; // superseded by a newer question
         setState("REASONING");
-        setAnswer(result);
+        setAnswer({
+          ...result,
+          latency: {
+            ...result.latency,
+            llm_ttft_ms: firstTextMs || Math.round(performance.now() - runStart),
+          },
+        });
         convRef.current = { subject: result.subject, chapter: result.chapter };
 
         // Practice is generated in the background so it never delays the answer.
