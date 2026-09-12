@@ -175,7 +175,6 @@ function Classroom({
               </button>
             ))}
           </div>
-          </div>
           <p className="eyebrow mt-7">Tutor language</p>
           <div className="mt-3 flex flex-wrap gap-1.5">
             {LANGUAGES.map((l) => (

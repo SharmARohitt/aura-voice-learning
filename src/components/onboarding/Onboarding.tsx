@@ -34,19 +34,10 @@ export function Onboarding({ onDone }: { onDone: (context: LearnerContext) => vo
     setSubjects((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
 
   return (
-    <main className="relative grid min-h-screen place-items-center overflow-hidden bg-canvas px-4 py-10 text-cream">
-      <div
-        className="pointer-events-none absolute -left-32 top-0 size-[520px] rounded-full bg-amber/15 blur-[120px]"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute -right-32 bottom-0 size-[520px] rounded-full bg-rose/15 blur-[120px]"
-        aria-hidden
-      />
-
-      <div className="relative w-full max-w-xl rounded-3xl border border-cream/10 bg-surface/50 p-6 backdrop-blur-xl sm:p-8">
+    <main className="grid min-h-screen place-items-center bg-canvas px-4 py-10 text-cream">
+      <div className="editorial-surface w-full max-w-xl rounded-lg p-6 sm:p-9">
         <div className="mb-6 flex items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-amber to-rose font-display text-sm font-bold text-canvas">
+          <div className="aura-accent grid size-10 place-items-center rounded-md font-display text-sm font-bold text-paper">
             VB
           </div>
           <div>
@@ -62,7 +53,7 @@ export function Onboarding({ onDone }: { onDone: (context: LearnerContext) => vo
             <li key={label} className="flex-1">
               <div
                 className={`h-1 rounded-full transition-colors ${
-                  i <= step ? "bg-gradient-to-r from-amber to-rose" : "bg-line"
+                  i <= step ? "bg-forest" : "bg-line"
                 }`}
               />
               <span
@@ -142,7 +133,7 @@ export function Onboarding({ onDone }: { onDone: (context: LearnerContext) => vo
             type="button"
             onClick={next}
             disabled={!canContinue}
-            className="rounded-xl bg-gradient-to-r from-amber to-rose px-6 py-2.5 text-[13px] font-semibold text-canvas disabled:opacity-50"
+            className="rounded-md bg-forest px-6 py-2.5 text-[13px] font-semibold text-paper disabled:opacity-50"
           >
             {step === STEPS.length - 1 ? "Enter classroom" : "Continue"}
           </button>

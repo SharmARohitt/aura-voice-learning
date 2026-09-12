@@ -47,7 +47,7 @@ export function SourceCard({ evidence, busy, onFollowUp }: Props) {
   const isPrimary = resolution?.kind === "primary";
 
   return (
-    <section className="rise-in rounded-2xl border border-amber/25 bg-gradient-to-r from-amber/10 to-rose/10 p-4">
+    <section className="editorial-surface rise-in rounded-lg border-l-4 border-l-forest p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-amber">
