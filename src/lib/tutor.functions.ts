@@ -315,7 +315,7 @@ export const transcribeSpeech = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const binary = Uint8Array.from(atob(data.audio_base64), (c) => c.charCodeAt(0));
     const blob = new Blob([binary], { type: data.mime_type });
-    const text = await transcribeAudio(blob, "speech.webm");
+    const text = await transcribeAudio(blob, data.mime_type);
     return { text };
   });
 

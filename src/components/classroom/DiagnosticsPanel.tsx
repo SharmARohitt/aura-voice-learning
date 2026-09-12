@@ -31,6 +31,7 @@ export function DiagnosticsPanel({ answer, events, activeStage }: Props) {
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Stat label="Speech to text" value={answer?.latency.stt_ms ? `${answer.latency.stt_ms}ms` : "—"} />
         <Stat label="Query parse" value={answer ? `${answer.latency.parse_ms ?? 0}ms` : "—"} />
         <Stat
           label="Retrieval"
