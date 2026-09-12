@@ -76,8 +76,10 @@ function repairTruncatedJson(text: string): string {
   return out;
 }
 
-export async function chatJson<T>(messages: ChatMessage[], signal?: AbortSignal): Promise<T> {
-
+async function chatCompletion(
+  messages: ChatMessage[],
+  signal?: AbortSignal,
+): Promise<{ content: string; finish: string }> {
   const res = await fetch(`${GATEWAY_URL}/chat/completions`, {
     method: "POST",
     headers: {
@@ -104,14 +106,48 @@ export async function chatJson<T>(messages: ChatMessage[], signal?: AbortSignal)
   }
 
   const data = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
+    choices?: { message?: { content?: string }; finish_reason?: string }[];
   };
-  const content = data.choices?.[0]?.message?.content ?? "";
-  const parsed = parseLooseJson<T>(content);
-  if (parsed !== null) return parsed;
-  console.error("[ai-gateway] unparsable model output", content.slice(0, 400));
-  throw new GatewayError(502, "The tutor returned an unreadable response.", true);
+  return {
+    content: data.choices?.[0]?.message?.content ?? "",
+    finish: data.choices?.[0]?.finish_reason ?? "stop",
+  };
+}
 
+/**
+ * JSON completion. A model can stop mid-object or wrap the JSON in prose, so
+ * unreadable output is repaired, then retried once with a stricter, shorter
+ * instruction before the caller ever sees an error.
+ */
+export async function chatJson<T>(messages: ChatMessage[], signal?: AbortSignal): Promise<T> {
+  const first = await chatCompletion(messages, signal);
+  const parsed = parseLooseJson<T>(first.content);
+  if (parsed !== null) return parsed;
+
+  console.error(
+    "[ai-gateway] unparsable model output",
+    first.finish,
+    first.content.slice(0, 400),
+  );
+
+  const retryMessages: ChatMessage[] = [
+    ...messages,
+    {
+      role: "system",
+      content:
+        "Your last reply was not valid JSON or was cut off. Reply again with ONE complete, minified JSON object only — no prose, no markdown fences. Keep every string short (one or two sentences) so the object finishes well within the limit.",
+    },
+  ];
+  const second = await chatCompletion(retryMessages, signal);
+  const retried = parseLooseJson<T>(second.content);
+  if (retried !== null) return retried;
+
+  console.error(
+    "[ai-gateway] unparsable model output after retry",
+    second.finish,
+    second.content.slice(0, 400),
+  );
+  throw new GatewayError(502, "The tutor returned an unreadable response.", true);
 }
 
 /**
