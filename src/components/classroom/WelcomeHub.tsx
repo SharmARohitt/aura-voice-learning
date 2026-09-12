@@ -19,13 +19,13 @@ interface Props {
 
 export function WelcomeHub({ context, topics, onAction, onEditProfile }: Props) {
   return (
-    <section className="rise-in rounded-3xl border border-cream/10 bg-surface/40 p-6 backdrop-blur-xl sm:p-8">
+    <section className="rise-in border-y border-line py-8">
       <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted">
         {context.class_level} · {context.goal} · {context.subjects.join(" / ")}
       </p>
-      <h2 className="mt-3 font-display text-[28px] font-bold leading-tight text-cream sm:text-[34px]">
+      <h2 className="mt-3 font-display text-[28px] font-semibold leading-tight text-ink sm:text-[34px]">
         Welcome, {context.name} —{" "}
-        <span className="bg-gradient-to-r from-amber to-rose bg-clip-text text-transparent">
+        <span className="text-forest">
           aaj kya padhna hai?
         </span>
       </h2>
@@ -34,15 +34,15 @@ export function WelcomeHub({ context, topics, onAction, onEditProfile }: Props) 
         Hinglish. Everything below is live — no dead buttons.
       </p>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-7 grid gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
         {ACTIONS.map((a) => (
           <button
             key={a.key}
             type="button"
             onClick={() => onAction(a.key)}
-            className="group rounded-2xl border border-cream/12 bg-canvas/40 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-amber/50 hover:bg-amber/8 focus-visible:outline-2 focus-visible:outline-amber"
+            className="group bg-surface p-5 text-left transition-colors hover:bg-sage/15 focus-visible:outline-2 focus-visible:outline-amber"
           >
-            <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-amber/80 to-rose/70 font-display text-[15px] text-canvas">
+            <span className="grid size-8 place-items-center rounded-md bg-rose/45 font-display text-sm font-semibold text-forest">
               {a.glyph}
             </span>
             <span className="mt-3 block font-display text-[15px] font-semibold text-cream">

@@ -20,7 +20,7 @@ export function PracticePanel({ questions, concept, onAttempt }: Props) {
 
   if (!current) {
     return (
-      <div className="rounded-3xl border border-cream/10 bg-surface/40 p-5 backdrop-blur-xl">
+      <div className="editorial-surface rounded-lg p-5">
         <h2 className="mb-2 font-display text-[13px] font-semibold uppercase tracking-[0.18em] text-muted">
           Practice This
         </h2>
@@ -34,7 +34,7 @@ export function PracticePanel({ questions, concept, onAttempt }: Props) {
   const correct = picked !== null && picked === current.answer_index;
 
   return (
-    <div className="rounded-3xl border border-cream/10 bg-surface/40 p-5 backdrop-blur-xl">
+    <div className="editorial-surface rounded-lg p-5">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.18em] text-muted">
           Practice This
