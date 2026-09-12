@@ -155,10 +155,10 @@ function Classroom({
     <div className="min-h-screen bg-canvas text-cream">
       <TopNav connected={session.sttMode !== "unavailable"} />
 
-      <main className="mx-auto grid max-w-[1500px] lg:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="border-b border-line bg-sage/10 px-5 py-4 lg:min-h-[calc(100vh-4rem)] lg:border-b-0 lg:border-r lg:px-6 lg:py-8">
+      <main className="mx-auto grid w-full min-w-0 max-w-[1500px] overflow-hidden lg:grid-cols-[260px_minmax(0,1fr)]">
+        <aside className="min-w-0 overflow-hidden border-b border-line bg-sage/10 px-5 py-4 lg:min-h-[calc(100vh-4rem)] lg:border-b-0 lg:border-r lg:px-6 lg:py-8">
           <p className="eyebrow">Learning mode</p>
-          <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1 lg:grid lg:grid-cols-1 lg:overflow-visible">
+          <div className="mt-3 flex w-full gap-1.5 overflow-x-auto pb-1 lg:grid lg:grid-cols-1 lg:overflow-visible">
             {MODES.map((m) => (
               <button
                 key={m.key}
