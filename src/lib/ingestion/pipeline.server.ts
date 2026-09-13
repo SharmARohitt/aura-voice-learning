@@ -79,14 +79,16 @@ export async function runIngestion(
 
   if (jobError || !job) throw new Error(jobError?.message ?? "Could not start the import job.");
 
+  // Persisted counters map 1:1 onto the job row; `rejected` is reported to the
+  // caller and the log but has no column of its own.
   const counters = {
     documents_created: 0,
     chunks_created: 0,
     duplicates_skipped: 0,
-    rejected: 0,
     embeddings_created: 0,
     embedding_failures: 0,
   };
+  let rejected = 0;
 
   const finish = async (status: "succeeded" | "failed", error: string | null): Promise<IngestionSummary> => {
     const duration = Date.now() - started;
@@ -98,7 +100,7 @@ export async function runIngestion(
         finished_at: new Date().toISOString(),
         duration_ms: duration,
         error,
-        log: log as never,
+        log: log as unknown as never,
         ...counters,
       })
       .eq("id", job.id);
@@ -107,11 +109,11 @@ export async function runIngestion(
       job_id: job.id,
       metric: "ingestion.run",
       value: duration,
-      detail: { status, ...counters } as never,
+      detail: { status, rejected, ...counters } as unknown as never,
     });
 
     invalidateKnowledgeStats();
-    return { job_id: job.id, status, duration_ms: duration, log, error, ...counters };
+    return { job_id: job.id, status, duration_ms: duration, log, error, rejected, ...counters };
   };
 
   const stage = async (name: string) => {
