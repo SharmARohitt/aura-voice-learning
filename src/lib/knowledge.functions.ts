@@ -201,19 +201,19 @@ export const updateKnowledgeChunk = createServerFn({ method: "POST" })
     if (patch.content && patch.content !== before.content) {
       const { contentHash } = await import("@/lib/knowledge/db.server");
       const { embeddingProvider } = await import("@/lib/embeddings/provider.server");
-      updates.content_hash = contentHash(patch.content);
+      updates["content_hash"] = contentHash(patch.content);
       try {
         const provider = embeddingProvider();
         const [vector] = await provider.embed([patch.content]);
         if (vector) {
-          updates.embedding = JSON.stringify(vector);
-          updates.embedding_version = provider.version;
-          updates.embedded_at = new Date().toISOString();
+          updates["embedding"] = JSON.stringify(vector);
+          updates["embedding_version"] = provider.version;
+          updates["embedded_at"] = new Date().toISOString();
         }
       } catch (error) {
         console.error("[knowledge] re-embed after edit failed", error);
-        updates.embedding = null;
-        updates.embedding_version = null;
+        updates["embedding"] = null;
+        updates["embedding_version"] = null;
       }
     }
 
