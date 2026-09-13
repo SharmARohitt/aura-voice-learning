@@ -86,7 +86,6 @@ export interface LectureChunk {
   /** Database row id, when this chunk came from the knowledge database. */
   record_id?: string;
   document_id?: string | null;
-  source_id?: string | null;
   source_name?: string;
   board?: string;
   section?: string | null;
