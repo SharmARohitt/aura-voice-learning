@@ -173,6 +173,20 @@ export interface RetrievalResult {
   prerequisiteGaps: string[];
   /** True when this exact query+filter was served from the retrieval cache. */
   cached?: boolean;
+  /** How many candidates each retrieval channel contributed. */
+  channels?: {
+    lexical: number;
+    vector: number;
+    concept: number;
+    seed: number;
+  };
+  /** grounded = course evidence; partial = weak evidence; general = model only. */
+  groundingLevel?: GroundingLevel;
+  /** Human-readable provenance for the evidence actually used. */
+  attributions?: SourceAttribution[];
+  /** True when the database served the candidates (vs the bundled seed corpus). */
+  databaseBacked?: boolean;
+  embeddingMs?: number;
 }
 
 export interface Misconception {
