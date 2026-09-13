@@ -81,25 +81,25 @@ function KnowledgePage() {
 
   const claim = useMutation({
     mutationFn: useServerFn(claimKnowledgeAdmin),
-    onSuccess: (result) =>
+    onSuccess: (result: { granted: boolean; reason: string | null }) =>
       refreshAll(result.granted ? "You are now the knowledge administrator." : (result.reason ?? "")),
   });
 
   const seed = useMutation({
     mutationFn: useServerFn(seedKnowledgeBase),
-    onSuccess: (r) => refreshAll(`Starter lessons loaded: ${r.inserted} added, ${r.skipped} already there.`),
+    onSuccess: (r: { inserted: number; skipped: number }) => refreshAll(`Starter lessons loaded: ${r.inserted} added, ${r.skipped} already there.`),
     onError: (e: Error) => setNotice(e.message),
   });
 
   const embed = useMutation({
     mutationFn: useServerFn(rebuildEmbeddings),
-    onSuccess: (r) => refreshAll(`Meaning-search prepared for ${r.embedded} lessons.`),
+    onSuccess: (r: { embedded: number }) => refreshAll(`Meaning-search prepared for ${r.embedded} lessons.`),
     onError: (e: Error) => setNotice(e.message),
   });
 
   const runImport = useMutation({
     mutationFn: useServerFn(importKnowledge),
-    onSuccess: (r) =>
+    onSuccess: (r: { chunksCreated: number; duplicatesSkipped: number }) =>
       refreshAll(
         `Import finished: ${r.chunksCreated} lessons added, ${r.duplicatesSkipped} duplicates skipped.`,
       ),
