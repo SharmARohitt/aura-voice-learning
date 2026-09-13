@@ -76,7 +76,7 @@ export interface LectureChunk {
   keywords?: string[];
   /** Where the original material lives. "internal" = indexed transcript only. */
   source_platform?: "internal" | "youtube" | "web";
-  source_id?: string;
+  source_id?: string | null;
   source_url?: string;
   /** Last known access state; the resolver re-verifies and caches at runtime. */
   access_status?: SourceAccessStatus;
