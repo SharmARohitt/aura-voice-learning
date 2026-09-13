@@ -241,6 +241,13 @@ export interface TutorAnswer {
   fallback_reason: string | null;
   /** Optional AI-generated mini diagram (structured, never markup). */
   visual?: DiagramSpec | null;
+  /** grounded / partial / general — finer than the boolean above. */
+  grounding_level?: GroundingLevel;
+  /** Where each piece of evidence came from, ready to show the student. */
+  attributions?: SourceAttribution[];
+  /** Retrieval diagnostics for the engineering panel. */
+  retrieval_channels?: { lexical: number; vector: number; concept: number; seed: number };
+  database_backed?: boolean;
   latency: PipelineLatency;
 }
 

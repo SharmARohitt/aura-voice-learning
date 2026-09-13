@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { chatJson, chatText, GatewayError, transcribeAudio } from "@/lib/ai-gateway.server";
-import { retrieve, neighboursOf, GROUNDING_THRESHOLD } from "@/lib/rag/retriever.server";
+import { GROUNDING_THRESHOLD } from "@/lib/rag/retriever.server";
+import { contextNeighbours, retrieveHybrid } from "@/lib/rag/hybrid.server";
 import { understand } from "@/lib/rag/query.server";
 import type { PracticeQuestion, TeachingMode, TutorAnswer } from "@/lib/types";
 
