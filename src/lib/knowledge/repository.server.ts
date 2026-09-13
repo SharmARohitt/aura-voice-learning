@@ -124,10 +124,7 @@ export async function vectorCandidates(
   const { data, error } = await db.rpc("match_knowledge_chunks", {
     query_embedding: embedding as unknown as string,
     match_count: limit,
-    filter_subject: filter.subject ?? undefined,
-    filter_class: filter.class_level ?? undefined,
-    filter_chapter: filter.chapter ?? undefined,
-    filter_exam: filter.exam ?? undefined,
+    ...rpcFilter(filter),
   });
   if (error) {
     console.error("[knowledge] vector search failed", error.message);
