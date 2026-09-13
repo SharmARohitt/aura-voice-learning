@@ -10,16 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ConfusionGraphRouteImport } from './routes/confusion-graph'
 import { Route as LearningRouteImport } from './routes/learning'
 import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as TeacherRouteImport } from './routes/teacher'
+import { Route as AuthenticatedKnowledgeRouteImport } from './routes/_authenticated/knowledge'
 import { Route as ApiTtsRouteImport } from './routes/api/tts'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -47,6 +53,11 @@ const TeacherRoute = TeacherRouteImport.update({
   path: '/teacher',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedKnowledgeRoute = AuthenticatedKnowledgeRouteImport.update({
+  id: '/knowledge',
+  path: '/knowledge',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ApiTtsRoute = ApiTtsRouteImport.update({
   id: '/api/tts',
   path: '/api/tts',
@@ -60,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/learning': typeof LearningRoute
   '/practice': typeof PracticeRoute
   '/teacher': typeof TeacherRoute
+  '/knowledge': typeof AuthenticatedKnowledgeRoute
   '/api/tts': typeof ApiTtsRoute
 }
 export interface FileRoutesByTo {
@@ -69,16 +81,19 @@ export interface FileRoutesByTo {
   '/learning': typeof LearningRoute
   '/practice': typeof PracticeRoute
   '/teacher': typeof TeacherRoute
+  '/knowledge': typeof AuthenticatedKnowledgeRoute
   '/api/tts': typeof ApiTtsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/confusion-graph': typeof ConfusionGraphRoute
   '/learning': typeof LearningRoute
   '/practice': typeof PracticeRoute
   '/teacher': typeof TeacherRoute
+  '/_authenticated/knowledge': typeof AuthenticatedKnowledgeRoute
   '/api/tts': typeof ApiTtsRoute
 }
 export interface FileRouteTypes {
@@ -90,6 +105,7 @@ export interface FileRouteTypes {
     | '/learning'
     | '/practice'
     | '/teacher'
+    | '/knowledge'
     | '/api/tts'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -99,20 +115,24 @@ export interface FileRouteTypes {
     | '/learning'
     | '/practice'
     | '/teacher'
+    | '/knowledge'
     | '/api/tts'
   id:
     | '__root__'
     | '/'
+    | '/_authenticated'
     | '/auth'
     | '/confusion-graph'
     | '/learning'
     | '/practice'
     | '/teacher'
+    | '/_authenticated/knowledge'
     | '/api/tts'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ConfusionGraphRoute: typeof ConfusionGraphRoute
   LearningRoute: typeof LearningRoute
@@ -128,6 +148,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -165,6 +192,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TeacherRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/knowledge': {
+      id: '/_authenticated/knowledge'
+      path: '/knowledge'
+      fullPath: '/knowledge'
+      preLoaderRoute: typeof AuthenticatedKnowledgeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/tts': {
       id: '/api/tts'
       path: '/api/tts'
@@ -175,8 +209,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedKnowledgeRoute: typeof AuthenticatedKnowledgeRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedKnowledgeRoute: AuthenticatedKnowledgeRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ConfusionGraphRoute: ConfusionGraphRoute,
   LearningRoute: LearningRoute,
