@@ -20,17 +20,17 @@ import { invalidateKnowledgeStats } from "@/lib/knowledge/repository.server";
 export interface IngestionInput {
   sourceName: string;
   sourceType: "textbook" | "notes" | "lecture_transcript" | "question_bank" | "web";
-  url?: string;
-  title?: string;
-  rawText?: string;
-  publisher?: string;
-  license?: string;
+  url?: string | undefined;
+  title?: string | undefined;
+  rawText?: string | undefined;
+  publisher?: string | undefined;
+  license?: string | undefined;
   hints: {
-    subject?: string;
-    class_level?: string;
-    board?: string;
-    chapter?: string;
-    exams?: string[];
+    subject?: string | undefined;
+    class_level?: string | undefined;
+    board?: string | undefined;
+    chapter?: string | undefined;
+    exams?: string[] | undefined;
   };
 }
 
