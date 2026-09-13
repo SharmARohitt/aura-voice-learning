@@ -114,7 +114,7 @@ Return ONLY JSON: ${SHAPE}`,
     const byIndex = new Map((result.items ?? []).map((it) => [it.index, it]));
     return chunks.map((_, i) => {
       const item = byIndex.get(i);
-      if (!item) return fallbackMetadata(hint);
+      if (!item) return fallbackMetadata(hint as Partial<ChunkMetadata>);
       return {
         subject: item.subject || hint.subject || "General",
         class_level: item.class_level || hint.class_level || "",
@@ -135,6 +135,6 @@ Return ONLY JSON: ${SHAPE}`,
     });
   } catch (error) {
     console.error("[ingestion] enrichment failed, falling back to hints", error);
-    return chunks.map(() => fallbackMetadata(hint));
+    return chunks.map(() => fallbackMetadata(hint as Partial<ChunkMetadata>));
   }
 }

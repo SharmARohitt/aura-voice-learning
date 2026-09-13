@@ -217,7 +217,7 @@ export const updateKnowledgeChunk = createServerFn({ method: "POST" })
       }
     }
 
-    const { error } = await context.supabase.from("knowledge_chunks").update(updates).eq("id", id);
+    const { error } = await context.supabase.from("knowledge_chunks").update(updates as never).eq("id", id);
     if (error) throw new Error(error.message);
 
     await context.supabase.from("knowledge_edits").insert({
