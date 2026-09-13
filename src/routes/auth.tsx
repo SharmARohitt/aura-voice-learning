@@ -12,7 +12,7 @@ export const Route = createFileRoute("/auth")({
       {
         name: "description",
         content:
-          "Sign in to manage the Voice Bingo knowledge base: import study material, review lessons and keep answers accurate.",
+          "Sign in to manage the Voice Bingo knowledge base: import study material, review lessons and keep the tutor's answers accurate.",
       },
       { property: "og:title", content: "Sign in · Voice Bingo knowledge desk" },
       {
@@ -24,6 +24,9 @@ export const Route = createFileRoute("/auth")({
     ],
   }),
 });
+
+const fieldClass =
+  "rounded-md border border-line bg-canvas px-3 py-2 text-sm text-cream outline-none focus-visible:ring-2 focus-visible:ring-amber/60";
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -60,57 +63,57 @@ function AuthPage() {
   }
 
   return (
-    <PageShell>
-      <div className="mx-auto w-full max-w-md py-14">
-        <h1 className="font-display text-2xl font-semibold text-ink">Knowledge desk</h1>
-        <p className="mt-2 text-sm text-muted">
-          Sign in to add study material and review what the tutor teaches from.
-        </p>
+    <PageShell
+      eyebrow="Knowledge desk"
+      title="Sign in to manage the teaching material"
+      intro="Only signed-in editors can add material, review lessons or correct what the tutor says. Learning and practice stay open to everyone."
+    >
+      <form
+        onSubmit={submit}
+        className="grid max-w-md gap-4 rounded-xl border border-line bg-surface/60 p-6"
+      >
+        <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-muted">
+          Email
+          <input
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={`${fieldClass} font-normal normal-case tracking-normal`}
+          />
+        </label>
+        <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-muted">
+          Password
+          <input
+            type="password"
+            required
+            minLength={6}
+            autoComplete={mode === "signup" ? "new-password" : "current-password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={`${fieldClass} font-normal normal-case tracking-normal`}
+          />
+        </label>
 
-        <form onSubmit={submit} className="mt-7 grid gap-4 rounded-xl border border-line bg-surface p-6">
-          <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-muted">
-            Email
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="rounded-md border border-line bg-paper px-3 py-2 text-sm font-normal normal-case tracking-normal text-ink outline-none focus-visible:ring-2 focus-visible:ring-amber/60"
-            />
-          </label>
-          <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-muted">
-            Password
-            <input
-              type="password"
-              required
-              minLength={6}
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="rounded-md border border-line bg-paper px-3 py-2 text-sm font-normal normal-case tracking-normal text-ink outline-none focus-visible:ring-2 focus-visible:ring-amber/60"
-            />
-          </label>
+        <button
+          type="submit"
+          disabled={busy}
+          className="mt-1 rounded-md bg-amber px-4 py-2.5 text-sm font-semibold text-canvas transition-opacity hover:opacity-90 disabled:opacity-60"
+        >
+          {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+        </button>
 
-          <button
-            type="submit"
-            disabled={busy}
-            className="mt-1 rounded-md bg-forest px-4 py-2.5 text-sm font-semibold text-paper transition-opacity hover:opacity-90 disabled:opacity-60"
-          >
-            {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
-          </button>
+        <button
+          type="button"
+          onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+          className="text-xs text-muted underline-offset-4 hover:underline"
+        >
+          {mode === "signin" ? "Need an account? Create one" : "Already have an account? Sign in"}
+        </button>
 
-          <button
-            type="button"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="text-xs text-muted underline-offset-4 hover:underline"
-          >
-            {mode === "signin" ? "Need an account? Create one" : "Already have an account? Sign in"}
-          </button>
-
-          {message && <p className="text-xs text-rose">{message}</p>}
-        </form>
-      </div>
+        {message && <p className="text-xs text-rose">{message}</p>}
+      </form>
     </PageShell>
   );
 }
