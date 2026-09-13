@@ -51,7 +51,6 @@ export function rowToChunk(row: ChunkRow): LectureChunk {
     page_number: row.page_number,
     subtopic_concept: row.concept,
     learning_objective: row.learning_objective,
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     formulas: row.formulas ?? [],
     examples: row.examples ?? [],
     confidence: Number(row.confidence ?? 0.8),
