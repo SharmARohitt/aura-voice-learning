@@ -10,6 +10,7 @@ const NAV = [
   { label: "Practice", to: "/practice" },
   { label: "Confusion Graph", to: "/confusion-graph" },
   { label: "Teacher", to: "/teacher" },
+  { label: "Knowledge", to: "/knowledge" },
 ] as const;
 
 export function TopNav({ connected }: { connected: boolean }) {
