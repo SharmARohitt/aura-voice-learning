@@ -83,18 +83,6 @@ export function invalidateKnowledgeStats(): void {
   availability.set("count", -1);
 }
 
-function applyFilter<T extends { eq: (c: string, v: string) => T; contains: (c: string, v: string[]) => T }>(
-  query: T,
-  filter: DbFilter,
-): T {
-  let q = query;
-  if (filter.subject) q = q.eq("subject", filter.subject);
-  if (filter.class_level) q = q.eq("class_level", filter.class_level);
-  if (filter.chapter) q = q.eq("chapter", filter.chapter);
-  if (filter.exam) q = q.contains("exams", [filter.exam]);
-  return q;
-}
-
 /** Lexical candidate pull — full-text index first, trigram as the safety net. */
 export async function lexicalCandidates(
   query: string,
