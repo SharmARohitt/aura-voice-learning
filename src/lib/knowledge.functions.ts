@@ -44,7 +44,7 @@ export const myKnowledgeRole = createServerFn({ method: "GET" })
       .from("user_roles")
       .select("role")
       .eq("user_id", context.userId);
-    const roles = (data ?? []).map((r) => r.role as string);
+    const roles = ((data ?? []) as { role: string }[]).map((r) => r.role);
     return { roles, editor: roles.includes("admin") || roles.includes("editor") };
   });
 
@@ -101,10 +101,10 @@ export const importKnowledge = createServerFn({ method: "POST" })
       publisher: data.publisher,
       license: data.license,
       hints: {
-        subject: data.subject,
-        class_level: data.class_level,
-        board: data.board,
-        chapter: data.chapter,
+        ...(data.subject ? { subject: data.subject } : {}),
+        ...(data.class_level ? { class_level: data.class_level } : {}),
+        ...(data.board ? { board: data.board } : {}),
+        ...(data.chapter ? { chapter: data.chapter } : {}),
         exams: data.exams,
       },
     });
