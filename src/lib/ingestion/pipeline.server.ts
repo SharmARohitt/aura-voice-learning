@@ -200,7 +200,7 @@ export async function runIngestion(
       for (const draft of batch) {
         const weak = structurallyWeak(draft);
         if (weak) {
-          counters.rejected += 1;
+          rejected += 1;
           note("gate", weak);
           continue;
         }
