@@ -123,8 +123,8 @@ export const askTutor = createServerFn({ method: "POST" })
       class_level: data.class_level,
     });
 
-    // 2. Hybrid retrieval (cached per query+filter).
-    const retrieval = await retrieve(data.question, {
+    // 2. Hybrid retrieval across the knowledge database + seed corpus.
+    const retrieval = await retrieveHybrid(data.question, {
       ...(data.course_id ? { course_id: data.course_id } : {}),
       ...(data.chapter || parsed.chapter ? { chapter: data.chapter ?? parsed.chapter! } : {}),
       ...(data.subjects.length ? { subjects: data.subjects } : {}),
@@ -133,22 +133,35 @@ export const askTutor = createServerFn({ method: "POST" })
     });
 
     const grounded = retrieval.grounded;
+    const groundingLevel = retrieval.groundingLevel ?? (grounded ? "grounded" : "general");
 
     // 3. Context packing: strongest evidence + one neighbouring segment for
-    //    continuity + lecture metadata. Never whole lectures.
+    //    continuity + provenance metadata. Never whole documents.
     const strongest = retrieval.evidence.slice(0, 3);
-    const neighbourText = grounded && strongest[0]
-      ? neighboursOf(strongest[0].chunk.chunk_id)
-          .slice(0, 1)
-          .map((n) => `[CONTEXT] ${n.timestamp_start}-${n.timestamp_end}: ${n.text}`)
-          .join("\n")
-      : "";
+    const neighbours = grounded && strongest[0] ? await contextNeighbours(strongest[0].chunk) : [];
+    const neighbourText = neighbours
+      .slice(0, 1)
+      .map((n) => `[CONTEXT] ${n.section ?? n.timestamp_start ?? ""} ${n.text}`.trim())
+      .join("\n");
 
     const evidenceBlock = strongest
-      .map(
-        (e, i) =>
-          `[E${i + 1}] (${e.level}) ${e.chunk.subject} · ${e.chunk.chapter} · Lecture ${e.chunk.lecture_number} (${e.chunk.timestamp_start}-${e.chunk.timestamp_end}) relevance ${e.relevance}\n${e.chunk.text}\nconcepts: ${e.chunk.concepts.join(", ")}`,
-      )
+      .map((e, i) => {
+        const c = e.chunk;
+        const where = [
+          c.source_name,
+          c.board,
+          c.class_level,
+          c.subject,
+          c.chapter,
+          c.section ?? c.subtopic,
+          c.page_number ? `p.${c.page_number}` : null,
+          c.lecture_number ? `Lecture ${c.lecture_number}` : null,
+          c.timestamp_start ? `${c.timestamp_start}-${c.timestamp_end}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        return `[E${i + 1}] (${e.level}) ${where} · relevance ${e.relevance}\n${c.text}\nconcepts: ${c.concepts.join(", ")}${c.formulas?.length ? `\nformulas: ${c.formulas.join(" ; ")}` : ""}`;
+      })
       .join("\n\n");
 
     const learnerBlock = `Student: ${data.student_name} · ${data.class_level || "level unknown"} · goal: ${data.goal || "general learning"} · subjects: ${data.subjects.join(", ") || "any"}
