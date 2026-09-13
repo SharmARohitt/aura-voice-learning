@@ -83,6 +83,16 @@ export function invalidateKnowledgeStats(): void {
   availability.set("count", -1);
 }
 
+/** Only send the filters that are actually set; the SQL treats them as optional. */
+function rpcFilter(filter: DbFilter) {
+  return {
+    ...(filter.subject ? { filter_subject: filter.subject } : {}),
+    ...(filter.class_level ? { filter_class: filter.class_level } : {}),
+    ...(filter.chapter ? { filter_chapter: filter.chapter } : {}),
+    ...(filter.exam ? { filter_exam: filter.exam } : {}),
+  };
+}
+
 /** Lexical candidate pull — full-text index first, trigram as the safety net. */
 export async function lexicalCandidates(
   query: string,
