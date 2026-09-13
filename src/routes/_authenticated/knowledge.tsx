@@ -93,15 +93,16 @@ function KnowledgePage() {
 
   const embed = useMutation({
     mutationFn: useServerFn(rebuildEmbeddings),
-    onSuccess: (r: { embedded: number }) => refreshAll(`Meaning-search prepared for ${r.embedded} lessons.`),
+    onSuccess: (r: { processed: number; failed: number; remaining: number }) =>
+      refreshAll(`Meaning search prepared for  lessons;  still waiting.`),
     onError: (e: Error) => setNotice(e.message),
   });
 
   const runImport = useMutation({
     mutationFn: useServerFn(importKnowledge),
-    onSuccess: (r: { chunksCreated: number; duplicatesSkipped: number }) =>
+    onSuccess: (r: { chunks_created: number; duplicates_skipped: number }) =>
       refreshAll(
-        `Import finished: ${r.chunksCreated} lessons added, ${r.duplicatesSkipped} duplicates skipped.`,
+        `Import finished:  lessons added,  duplicates skipped.`,
       ),
     onError: (e: Error) => setNotice(e.message),
   });
