@@ -250,9 +250,16 @@ No approved course evidence cleared the grounding threshold (top relevance ${ret
       evidence: grounded ? retrieval.evidence : [],
       confidence: clamp(model.confidence ?? retrieval.topRelevance),
       escalation_required: Boolean(model.escalation_required),
-      fallback_reason: grounded
-        ? null
-        : `Not found in your course index (top relevance ${retrieval.topRelevance.toFixed(2)} < ${GROUNDING_THRESHOLD}) — answered from general knowledge.`,
+      grounding_level: groundingLevel,
+      attributions: grounded ? (retrieval.attributions ?? []) : [],
+      retrieval_channels: retrieval.channels,
+      database_backed: Boolean(retrieval.databaseBacked),
+      fallback_reason:
+        groundingLevel === "grounded"
+          ? null
+          : groundingLevel === "partial"
+            ? `Your material only partly covers this (top match ${retrieval.topRelevance.toFixed(2)}) — the rest is general knowledge.`
+            : `Not found in your course index (top relevance ${retrieval.topRelevance.toFixed(2)} < ${GROUNDING_THRESHOLD}) — answered from general knowledge.`,
       latency: {
         intent_ms: Math.round(parsed.parse_ms),
         parse_ms: Math.round(parsed.parse_ms),
