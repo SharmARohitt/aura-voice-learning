@@ -20,17 +20,17 @@ import { invalidateKnowledgeStats } from "@/lib/knowledge/repository.server";
 export interface IngestionInput {
   sourceName: string;
   sourceType: "textbook" | "notes" | "lecture_transcript" | "question_bank" | "web";
-  url?: string;
-  title?: string;
-  rawText?: string;
-  publisher?: string;
-  license?: string;
+  url?: string | undefined;
+  title?: string | undefined;
+  rawText?: string | undefined;
+  publisher?: string | undefined;
+  license?: string | undefined;
   hints: {
-    subject?: string;
-    class_level?: string;
-    board?: string;
-    chapter?: string;
-    exams?: string[];
+    subject?: string | undefined;
+    class_level?: string | undefined;
+    board?: string | undefined;
+    chapter?: string | undefined;
+    exams?: string[] | undefined;
   };
 }
 
@@ -106,10 +106,10 @@ export async function runIngestion(
       .eq("id", job.id);
 
     await db.from("ingestion_metrics").insert({
-      job_id: job.id,
       metric: "ingestion.run",
+      unit: "ms",
       value: duration,
-      detail: { status, rejected, ...counters } as unknown as never,
+      detail: { job_id: job.id, status, rejected, ...counters } as unknown as never,
     });
 
     invalidateKnowledgeStats();
@@ -200,7 +200,7 @@ export async function runIngestion(
       for (const draft of batch) {
         const weak = structurallyWeak(draft);
         if (weak) {
-          counters.rejected += 1;
+          rejected += 1;
           note("gate", weak);
           continue;
         }

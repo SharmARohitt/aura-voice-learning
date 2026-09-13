@@ -44,7 +44,7 @@ export const myKnowledgeRole = createServerFn({ method: "GET" })
       .from("user_roles")
       .select("role")
       .eq("user_id", context.userId);
-    const roles = (data ?? []).map((r) => r.role as string);
+    const roles = ((data ?? []) as { role: string }[]).map((r) => r.role);
     return { roles, editor: roles.includes("admin") || roles.includes("editor") };
   });
 
@@ -101,10 +101,10 @@ export const importKnowledge = createServerFn({ method: "POST" })
       publisher: data.publisher,
       license: data.license,
       hints: {
-        subject: data.subject,
-        class_level: data.class_level,
-        board: data.board,
-        chapter: data.chapter,
+        ...(data.subject ? { subject: data.subject } : {}),
+        ...(data.class_level ? { class_level: data.class_level } : {}),
+        ...(data.board ? { board: data.board } : {}),
+        ...(data.chapter ? { chapter: data.chapter } : {}),
         exams: data.exams,
       },
     });
@@ -201,23 +201,23 @@ export const updateKnowledgeChunk = createServerFn({ method: "POST" })
     if (patch.content && patch.content !== before.content) {
       const { contentHash } = await import("@/lib/knowledge/db.server");
       const { embeddingProvider } = await import("@/lib/embeddings/provider.server");
-      updates.content_hash = contentHash(patch.content);
+      updates["content_hash"] = contentHash(patch.content);
       try {
         const provider = embeddingProvider();
         const [vector] = await provider.embed([patch.content]);
         if (vector) {
-          updates.embedding = JSON.stringify(vector);
-          updates.embedding_version = provider.version;
-          updates.embedded_at = new Date().toISOString();
+          updates["embedding"] = JSON.stringify(vector);
+          updates["embedding_version"] = provider.version;
+          updates["embedded_at"] = new Date().toISOString();
         }
       } catch (error) {
         console.error("[knowledge] re-embed after edit failed", error);
-        updates.embedding = null;
-        updates.embedding_version = null;
+        updates["embedding"] = null;
+        updates["embedding_version"] = null;
       }
     }
 
-    const { error } = await context.supabase.from("knowledge_chunks").update(updates).eq("id", id);
+    const { error } = await context.supabase.from("knowledge_chunks").update(updates as never).eq("id", id);
     if (error) throw new Error(error.message);
 
     await context.supabase.from("knowledge_edits").insert({

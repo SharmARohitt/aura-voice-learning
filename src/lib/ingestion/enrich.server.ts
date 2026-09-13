@@ -71,7 +71,13 @@ function fallbackMetadata(hint: Partial<ChunkMetadata>): ChunkMetadata {
 /** Classify a batch of chunks in a single model call. */
 export async function enrichChunks(
   chunks: DraftChunk[],
-  hint: { subject?: string; class_level?: string; board?: string; chapter?: string; exams?: string[] },
+  hint: {
+    subject?: string | undefined;
+    class_level?: string | undefined;
+    board?: string | undefined;
+    chapter?: string | undefined;
+    exams?: string[] | undefined;
+  },
 ): Promise<ChunkMetadata[]> {
   if (chunks.length === 0) return [];
 
@@ -108,7 +114,7 @@ Return ONLY JSON: ${SHAPE}`,
     const byIndex = new Map((result.items ?? []).map((it) => [it.index, it]));
     return chunks.map((_, i) => {
       const item = byIndex.get(i);
-      if (!item) return fallbackMetadata(hint);
+      if (!item) return fallbackMetadata(hint as Partial<ChunkMetadata>);
       return {
         subject: item.subject || hint.subject || "General",
         class_level: item.class_level || hint.class_level || "",
@@ -129,6 +135,6 @@ Return ONLY JSON: ${SHAPE}`,
     });
   } catch (error) {
     console.error("[ingestion] enrichment failed, falling back to hints", error);
-    return chunks.map(() => fallbackMetadata(hint));
+    return chunks.map(() => fallbackMetadata(hint as Partial<ChunkMetadata>));
   }
 }

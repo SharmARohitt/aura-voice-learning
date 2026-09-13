@@ -55,7 +55,7 @@ export function rowToChunk(row: ChunkRow): LectureChunk {
     examples: row.examples ?? [],
     confidence: Number(row.confidence ?? 0.8),
     origin: "database",
-  };
+  } as LectureChunk;
 }
 
 const availability = new TtlCache<number>(60_000, 4);
@@ -83,16 +83,14 @@ export function invalidateKnowledgeStats(): void {
   availability.set("count", -1);
 }
 
-function applyFilter<T extends { eq: (c: string, v: string) => T; contains: (c: string, v: string[]) => T }>(
-  query: T,
-  filter: DbFilter,
-): T {
-  let q = query;
-  if (filter.subject) q = q.eq("subject", filter.subject);
-  if (filter.class_level) q = q.eq("class_level", filter.class_level);
-  if (filter.chapter) q = q.eq("chapter", filter.chapter);
-  if (filter.exam) q = q.contains("exams", [filter.exam]);
-  return q;
+/** Only send the filters that are actually set; the SQL treats them as optional. */
+function rpcFilter(filter: DbFilter) {
+  return {
+    ...(filter.subject ? { filter_subject: filter.subject } : {}),
+    ...(filter.class_level ? { filter_class: filter.class_level } : {}),
+    ...(filter.chapter ? { filter_chapter: filter.chapter } : {}),
+    ...(filter.exam ? { filter_exam: filter.exam } : {}),
+  };
 }
 
 /** Lexical candidate pull — full-text index first, trigram as the safety net. */
@@ -106,10 +104,7 @@ export async function lexicalCandidates(
   const { data, error } = await db.rpc("search_knowledge_chunks", {
     query_text: query,
     match_count: limit,
-    filter_subject: filter.subject ?? null,
-    filter_class: filter.class_level ?? null,
-    filter_chapter: filter.chapter ?? null,
-    filter_exam: filter.exam ?? null,
+    ...rpcFilter(filter),
   });
   if (error) {
     console.error("[knowledge] lexical search failed", error.message);
@@ -129,10 +124,7 @@ export async function vectorCandidates(
   const { data, error } = await db.rpc("match_knowledge_chunks", {
     query_embedding: embedding as unknown as string,
     match_count: limit,
-    filter_subject: filter.subject ?? null,
-    filter_class: filter.class_level ?? null,
-    filter_chapter: filter.chapter ?? null,
-    filter_exam: filter.exam ?? null,
+    ...rpcFilter(filter),
   });
   if (error) {
     console.error("[knowledge] vector search failed", error.message);
@@ -180,16 +172,17 @@ export async function conceptCandidates(
     .limit(12);
   for (const row of conceptRows ?? []) canonical.add(row.name.toLowerCase());
 
-  const { data, error } = await applyFilter(
-    db
-      .from("knowledge_chunks")
-      .select("*")
-      .eq("approval_status", "approved")
-      .overlaps("concepts", [...canonical]) as never,
-    filter,
-  )
-    .limit(limit)
-    .returns<ChunkRow[]>();
+  let query = db
+    .from("knowledge_chunks")
+    .select("*")
+    .eq("approval_status", "approved")
+    .overlaps("concepts", [...canonical]);
+  if (filter.subject) query = query.eq("subject", filter.subject);
+  if (filter.class_level) query = query.eq("class_level", filter.class_level);
+  if (filter.chapter) query = query.eq("chapter", filter.chapter);
+  if (filter.exam) query = query.contains("exams", [filter.exam]);
+
+  const { data, error } = await query.limit(limit).returns<ChunkRow[]>();
 
   if (error) {
     console.error("[knowledge] concept search failed", error.message);

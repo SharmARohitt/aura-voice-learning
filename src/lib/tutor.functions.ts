@@ -252,7 +252,7 @@ No approved course evidence cleared the grounding threshold (top relevance ${ret
       escalation_required: Boolean(model.escalation_required),
       grounding_level: groundingLevel,
       attributions: grounded ? (retrieval.attributions ?? []) : [],
-      retrieval_channels: retrieval.channels,
+      ...(retrieval.channels ? { retrieval_channels: retrieval.channels } : {}),
       database_backed: Boolean(retrieval.databaseBacked),
       fallback_reason:
         groundingLevel === "grounded"
