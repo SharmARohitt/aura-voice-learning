@@ -55,7 +55,7 @@ export function rowToChunk(row: ChunkRow): LectureChunk {
     examples: row.examples ?? [],
     confidence: Number(row.confidence ?? 0.8),
     origin: "database",
-  };
+  } as LectureChunk;
 }
 
 const availability = new TtlCache<number>(60_000, 4);
