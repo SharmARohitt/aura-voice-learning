@@ -210,14 +210,15 @@ export async function runIngestion(
 
       const metadata = await enrichChunks(keep, input.hints);
       const accepted = keep
-        .map((draft, k) => ({ draft, meta: metadata[k] }))
-        .filter(({ meta }) => {
+        .flatMap((draft, k) => {
+          const meta = metadata[k];
+          if (!meta) return [];
           if (meta.quality < QUALITY_GATE) {
-            counters.rejected += 1;
+            rejected += 1;
             note("gate", meta.reject_reason ?? "Below the quality threshold.");
-            return false;
+            return [];
           }
-          return true;
+          return [{ draft, meta }];
         });
       if (accepted.length === 0) continue;
 
