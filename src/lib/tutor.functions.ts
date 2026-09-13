@@ -375,7 +375,7 @@ export const quickAnswer = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => QuickInput.parse(input))
   .handler(async ({ data }): Promise<{ text: string; grounded: boolean; ms: number }> => {
     const started = performance.now();
-    const retrieval = await retrieve(data.question, {
+    const retrieval = await retrieveHybrid(data.question, {
       ...(data.course_id ? { course_id: data.course_id } : {}),
       ...(data.subjects.length ? { subjects: data.subjects } : {}),
       ...(data.class_level ? { class_level: data.class_level } : {}),
