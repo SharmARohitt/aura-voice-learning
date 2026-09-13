@@ -94,10 +94,7 @@ export async function lexicalCandidates(
   const { data, error } = await db.rpc("search_knowledge_chunks", {
     query_text: query,
     match_count: limit,
-    filter_subject: filter.subject ?? undefined,
-    filter_class: filter.class_level ?? undefined,
-    filter_chapter: filter.chapter ?? undefined,
-    filter_exam: filter.exam ?? undefined,
+    ...rpcFilter(filter),
   });
   if (error) {
     console.error("[knowledge] lexical search failed", error.message);
