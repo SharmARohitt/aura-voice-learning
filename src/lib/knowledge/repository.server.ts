@@ -106,10 +106,10 @@ export async function lexicalCandidates(
   const { data, error } = await db.rpc("search_knowledge_chunks", {
     query_text: query,
     match_count: limit,
-    filter_subject: filter.subject ?? null,
-    filter_class: filter.class_level ?? null,
-    filter_chapter: filter.chapter ?? null,
-    filter_exam: filter.exam ?? null,
+    filter_subject: filter.subject ?? undefined,
+    filter_class: filter.class_level ?? undefined,
+    filter_chapter: filter.chapter ?? undefined,
+    filter_exam: filter.exam ?? undefined,
   });
   if (error) {
     console.error("[knowledge] lexical search failed", error.message);
@@ -129,10 +129,10 @@ export async function vectorCandidates(
   const { data, error } = await db.rpc("match_knowledge_chunks", {
     query_embedding: embedding as unknown as string,
     match_count: limit,
-    filter_subject: filter.subject ?? null,
-    filter_class: filter.class_level ?? null,
-    filter_chapter: filter.chapter ?? null,
-    filter_exam: filter.exam ?? null,
+    filter_subject: filter.subject ?? undefined,
+    filter_class: filter.class_level ?? undefined,
+    filter_chapter: filter.chapter ?? undefined,
+    filter_exam: filter.exam ?? undefined,
   });
   if (error) {
     console.error("[knowledge] vector search failed", error.message);
