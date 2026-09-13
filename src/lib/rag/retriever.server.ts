@@ -195,10 +195,12 @@ export function neighboursOf(chunkId: string): LectureChunk[] {
 }
 
 /**
- * Retrieval cascade: strict metadata filter first, then progressively widen so
- * a student is never blocked by their own onboarding answers.
+ * Retrieval cascade over the bundled seed corpus: strict metadata filter
+ * first, then progressively widen so a student is never blocked by their own
+ * onboarding answers. This is the fallback channel once the knowledge database
+ * holds content, and the only channel before migration.
  */
-export async function retrieve(
+export async function retrieveSeed(
   query: string,
   filter: RetrievalFilter = {},
 ): Promise<RetrievalResult> {

@@ -81,6 +81,42 @@ export interface LectureChunk {
   /** Last known access state; the resolver re-verifies and caches at runtime. */
   access_status?: SourceAccessStatus;
   last_verified_at?: string;
+
+  // ── Knowledge-engine provenance (present for database-backed chunks) ──────
+  /** Database row id, when this chunk came from the knowledge database. */
+  record_id?: string;
+  document_id?: string | null;
+  source_id?: string | null;
+  source_name?: string;
+  board?: string;
+  section?: string | null;
+  page_number?: number | null;
+  subtopic_concept?: string | null;
+  learning_objective?: string | null;
+  formulas?: string[];
+  examples?: string[];
+  confidence?: number;
+  /** "database" for ingested/edited knowledge, "seed" for the bundled corpus. */
+  origin?: "database" | "seed";
+}
+
+/** Where an answer's knowledge actually came from. */
+export type GroundingLevel = "grounded" | "partial" | "general";
+
+/** Human-readable provenance for one piece of evidence. */
+export interface SourceAttribution {
+  chunk_id: string;
+  source_name: string;
+  source_url: string | null;
+  subject: string;
+  class_level: string;
+  board: string;
+  chapter: string;
+  topic: string;
+  section: string | null;
+  page_number: number | null;
+  origin: "database" | "seed";
+  relevance: number;
 }
 
 export type SourceAccessStatus =
@@ -137,6 +173,20 @@ export interface RetrievalResult {
   prerequisiteGaps: string[];
   /** True when this exact query+filter was served from the retrieval cache. */
   cached?: boolean;
+  /** How many candidates each retrieval channel contributed. */
+  channels?: {
+    lexical: number;
+    vector: number;
+    concept: number;
+    seed: number;
+  };
+  /** grounded = course evidence; partial = weak evidence; general = model only. */
+  groundingLevel?: GroundingLevel;
+  /** Human-readable provenance for the evidence actually used. */
+  attributions?: SourceAttribution[];
+  /** True when the database served the candidates (vs the bundled seed corpus). */
+  databaseBacked?: boolean;
+  embeddingMs?: number;
 }
 
 export interface Misconception {
@@ -191,6 +241,13 @@ export interface TutorAnswer {
   fallback_reason: string | null;
   /** Optional AI-generated mini diagram (structured, never markup). */
   visual?: DiagramSpec | null;
+  /** grounded / partial / general — finer than the boolean above. */
+  grounding_level?: GroundingLevel;
+  /** Where each piece of evidence came from, ready to show the student. */
+  attributions?: SourceAttribution[];
+  /** Retrieval diagnostics for the engineering panel. */
+  retrieval_channels?: { lexical: number; vector: number; concept: number; seed: number };
+  database_backed?: boolean;
   latency: PipelineLatency;
 }
 

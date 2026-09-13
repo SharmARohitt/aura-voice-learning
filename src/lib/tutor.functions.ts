@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { chatJson, chatText, GatewayError, transcribeAudio } from "@/lib/ai-gateway.server";
-import { retrieve, neighboursOf, GROUNDING_THRESHOLD } from "@/lib/rag/retriever.server";
+import { GROUNDING_THRESHOLD } from "@/lib/rag/retriever.server";
+import { contextNeighbours, retrieveHybrid } from "@/lib/rag/hybrid.server";
 import { understand } from "@/lib/rag/query.server";
 import type { PracticeQuestion, TeachingMode, TutorAnswer } from "@/lib/types";
 
@@ -122,8 +123,8 @@ export const askTutor = createServerFn({ method: "POST" })
       class_level: data.class_level,
     });
 
-    // 2. Hybrid retrieval (cached per query+filter).
-    const retrieval = await retrieve(data.question, {
+    // 2. Hybrid retrieval across the knowledge database + seed corpus.
+    const retrieval = await retrieveHybrid(data.question, {
       ...(data.course_id ? { course_id: data.course_id } : {}),
       ...(data.chapter || parsed.chapter ? { chapter: data.chapter ?? parsed.chapter! } : {}),
       ...(data.subjects.length ? { subjects: data.subjects } : {}),
@@ -132,30 +133,49 @@ export const askTutor = createServerFn({ method: "POST" })
     });
 
     const grounded = retrieval.grounded;
+    const groundingLevel = retrieval.groundingLevel ?? (grounded ? "grounded" : "general");
 
     // 3. Context packing: strongest evidence + one neighbouring segment for
-    //    continuity + lecture metadata. Never whole lectures.
+    //    continuity + provenance metadata. Never whole documents.
     const strongest = retrieval.evidence.slice(0, 3);
-    const neighbourText = grounded && strongest[0]
-      ? neighboursOf(strongest[0].chunk.chunk_id)
-          .slice(0, 1)
-          .map((n) => `[CONTEXT] ${n.timestamp_start}-${n.timestamp_end}: ${n.text}`)
-          .join("\n")
-      : "";
+    const neighbours = grounded && strongest[0] ? await contextNeighbours(strongest[0].chunk) : [];
+    const neighbourText = neighbours
+      .slice(0, 1)
+      .map((n) => `[CONTEXT] ${n.section ?? n.timestamp_start ?? ""} ${n.text}`.trim())
+      .join("\n");
 
     const evidenceBlock = strongest
-      .map(
-        (e, i) =>
-          `[E${i + 1}] (${e.level}) ${e.chunk.subject} · ${e.chunk.chapter} · Lecture ${e.chunk.lecture_number} (${e.chunk.timestamp_start}-${e.chunk.timestamp_end}) relevance ${e.relevance}\n${e.chunk.text}\nconcepts: ${e.chunk.concepts.join(", ")}`,
-      )
+      .map((e, i) => {
+        const c = e.chunk;
+        const where = [
+          c.source_name,
+          c.board,
+          c.class_level,
+          c.subject,
+          c.chapter,
+          c.section ?? c.subtopic,
+          c.page_number ? `p.${c.page_number}` : null,
+          c.lecture_number ? `Lecture ${c.lecture_number}` : null,
+          c.timestamp_start ? `${c.timestamp_start}-${c.timestamp_end}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        return `[E${i + 1}] (${e.level}) ${where} · relevance ${e.relevance}\n${c.text}\nconcepts: ${c.concepts.join(", ")}${c.formulas?.length ? `\nformulas: ${c.formulas.join(" ; ")}` : ""}`;
+      })
       .join("\n\n");
 
     const learnerBlock = `Student: ${data.student_name} · ${data.class_level || "level unknown"} · goal: ${data.goal || "general learning"} · subjects: ${data.subjects.join(", ") || "any"}
 Detected: topic ${parsed.topic ?? "unknown"} · intent ${parsed.intent} · language ${parsed.language} · level ${parsed.difficulty}
 Known weak concepts: ${data.weak_concepts.join(", ") || "none recorded"}`;
 
+    const partialNote =
+      groundingLevel === "partial"
+        ? "The evidence is related but does not fully cover the question. Use it where it genuinely helps, fill the rest from reliable general knowledge, and say in the first section which part came from their material and which did not.\n"
+        : "";
+
     const systemPrompt = grounded
       ? `You are Aura, an AI tutor for Indian students. Answer using the supplied APPROVED COURSE EVIDENCE as the primary source; do not invent formulas the evidence contradicts. Never invent lecture numbers, teachers, timestamps or URLs.
+${partialNote}
 ${STRATEGY_INSTRUCTION[data.strategy]}
 ${MODE_INSTRUCTION[data.mode]}
 ${LANGUAGE_INSTRUCTION[data.language]}
@@ -230,9 +250,16 @@ No approved course evidence cleared the grounding threshold (top relevance ${ret
       evidence: grounded ? retrieval.evidence : [],
       confidence: clamp(model.confidence ?? retrieval.topRelevance),
       escalation_required: Boolean(model.escalation_required),
-      fallback_reason: grounded
-        ? null
-        : `Not found in your course index (top relevance ${retrieval.topRelevance.toFixed(2)} < ${GROUNDING_THRESHOLD}) — answered from general knowledge.`,
+      grounding_level: groundingLevel,
+      attributions: grounded ? (retrieval.attributions ?? []) : [],
+      retrieval_channels: retrieval.channels,
+      database_backed: Boolean(retrieval.databaseBacked),
+      fallback_reason:
+        groundingLevel === "grounded"
+          ? null
+          : groundingLevel === "partial"
+            ? `Your material only partly covers this (top match ${retrieval.topRelevance.toFixed(2)}) — the rest is general knowledge.`
+            : `Not found in your course index (top relevance ${retrieval.topRelevance.toFixed(2)} < ${GROUNDING_THRESHOLD}) — answered from general knowledge.`,
       latency: {
         intent_ms: Math.round(parsed.parse_ms),
         parse_ms: Math.round(parsed.parse_ms),
@@ -348,7 +375,7 @@ export const quickAnswer = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => QuickInput.parse(input))
   .handler(async ({ data }): Promise<{ text: string; grounded: boolean; ms: number }> => {
     const started = performance.now();
-    const retrieval = await retrieve(data.question, {
+    const retrieval = await retrieveHybrid(data.question, {
       ...(data.course_id ? { course_id: data.course_id } : {}),
       ...(data.subjects.length ? { subjects: data.subjects } : {}),
       ...(data.class_level ? { class_level: data.class_level } : {}),
