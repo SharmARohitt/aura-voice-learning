@@ -54,8 +54,8 @@ export function extractHtml(html: string): ContentBlock[] {
   const pattern = new RegExp(`<(${BLOCK_TAGS})\\b[^>]*>([\\s\\S]*?)</\\1>`, "gi");
 
   for (const match of cleaned.matchAll(pattern)) {
-    const tag = match[1].toLowerCase();
-    const text = decode(match[2].replace(/<[^>]+>/g, " "))
+    const tag = (match[1] ?? "").toLowerCase();
+    const text = decode((match[2] ?? "").replace(/<[^>]+>/g, " "))
       .replace(/\s+/g, " ")
       .trim();
     if (text.length < 3) continue;
