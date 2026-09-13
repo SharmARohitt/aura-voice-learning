@@ -180,16 +180,17 @@ export async function conceptCandidates(
     .limit(12);
   for (const row of conceptRows ?? []) canonical.add(row.name.toLowerCase());
 
-  const { data, error } = await applyFilter(
-    db
-      .from("knowledge_chunks")
-      .select("*")
-      .eq("approval_status", "approved")
-      .overlaps("concepts", [...canonical]) as never,
-    filter,
-  )
-    .limit(limit)
-    .returns<ChunkRow[]>();
+  let query = db
+    .from("knowledge_chunks")
+    .select("*")
+    .eq("approval_status", "approved")
+    .overlaps("concepts", [...canonical]);
+  if (filter.subject) query = query.eq("subject", filter.subject);
+  if (filter.class_level) query = query.eq("class_level", filter.class_level);
+  if (filter.chapter) query = query.eq("chapter", filter.chapter);
+  if (filter.exam) query = query.contains("exams", [filter.exam]);
+
+  const { data, error } = await query.limit(limit).returns<ChunkRow[]>();
 
   if (error) {
     console.error("[knowledge] concept search failed", error.message);
