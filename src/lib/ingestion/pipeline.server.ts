@@ -106,10 +106,10 @@ export async function runIngestion(
       .eq("id", job.id);
 
     await db.from("ingestion_metrics").insert({
-      job_id: job.id,
       metric: "ingestion.run",
+      unit: "ms",
       value: duration,
-      detail: { status, rejected, ...counters } as unknown as never,
+      detail: { job_id: job.id, status, rejected, ...counters } as unknown as never,
     });
 
     invalidateKnowledgeStats();

@@ -71,7 +71,13 @@ function fallbackMetadata(hint: Partial<ChunkMetadata>): ChunkMetadata {
 /** Classify a batch of chunks in a single model call. */
 export async function enrichChunks(
   chunks: DraftChunk[],
-  hint: { subject?: string; class_level?: string; board?: string; chapter?: string; exams?: string[] },
+  hint: {
+    subject?: string | undefined;
+    class_level?: string | undefined;
+    board?: string | undefined;
+    chapter?: string | undefined;
+    exams?: string[] | undefined;
+  },
 ): Promise<ChunkMetadata[]> {
   if (chunks.length === 0) return [];
 
