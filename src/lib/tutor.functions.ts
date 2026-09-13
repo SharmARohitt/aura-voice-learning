@@ -168,8 +168,14 @@ export const askTutor = createServerFn({ method: "POST" })
 Detected: topic ${parsed.topic ?? "unknown"} · intent ${parsed.intent} · language ${parsed.language} · level ${parsed.difficulty}
 Known weak concepts: ${data.weak_concepts.join(", ") || "none recorded"}`;
 
+    const partialNote =
+      groundingLevel === "partial"
+        ? "The evidence is related but does not fully cover the question. Use it where it genuinely helps, fill the rest from reliable general knowledge, and say in the first section which part came from their material and which did not.\n"
+        : "";
+
     const systemPrompt = grounded
       ? `You are Aura, an AI tutor for Indian students. Answer using the supplied APPROVED COURSE EVIDENCE as the primary source; do not invent formulas the evidence contradicts. Never invent lecture numbers, teachers, timestamps or URLs.
+${partialNote}
 ${STRATEGY_INSTRUCTION[data.strategy]}
 ${MODE_INSTRUCTION[data.mode]}
 ${LANGUAGE_INSTRUCTION[data.language]}
